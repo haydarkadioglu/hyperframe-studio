@@ -87,19 +87,26 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
+            {/* Animated gradient left-border bar for active */}
+            {active && (
+              <span
+                aria-hidden
+                className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:100%_200%]"
+              />
+            )}
             {/* sliding bg on hover */}
             <span
               className={cn(
                 "pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-300",
-                active ? "opacity-0" : "bg-gradient-to-r from-violet-500/5 to-fuchsia-500/0"
+                active ? "opacity-0" : "bg-gradient-to-r from-violet-500/10 via-fuchsia-500/5 to-transparent"
               )}
             />
             <span
               className={cn(
                 "relative grid size-8 place-items-center rounded-lg transition-all duration-200",
                 active
-                  ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30"
-                  : "bg-muted text-muted-foreground group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:text-white group-hover:scale-105"
+                  ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30 pulse-glow"
+                  : "bg-muted text-muted-foreground group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:text-white group-hover:scale-110"
               )}
             >
               <Icon className="size-4 transition-transform group-hover:scale-110" />
@@ -125,7 +132,7 @@ function NewVideoButton({ onClick }: { onClick?: () => void }) {
         go("create");
         onClick?.();
       }}
-      className="w-full min-h-[44px] bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:opacity-90 text-white shadow-lg shadow-fuchsia-500/30 border-0"
+      className="w-full min-h-[44px] btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 border-0 relative overflow-hidden"
     >
       <Sparkles className="size-4" />
       Yeni Video
@@ -164,7 +171,7 @@ function SidebarStatsBadge() {
           </span>
           Toplam proje
         </span>
-        <span className="text-sm font-bold tabular-nums text-foreground group-hover:text-fuchsia-500 transition-colors">
+        <span className="text-sm font-bold tabular-nums brand-gradient-text animated-gradient-x bg-[length:200%_100%] inline-block">
           {count}
         </span>
       </div>

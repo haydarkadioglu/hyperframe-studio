@@ -222,6 +222,25 @@ export async function getStats(): Promise<StatsData> {
   return request<StatsData>("/api/stats");
 }
 
+// ---- Prompt suggestions ----
+
+export interface SuggestPromptsResponse {
+  curated: string[];
+  ai: string[];
+  seed: string;
+}
+
+export async function suggestPrompts(body: {
+  topic?: string;
+  mode?: string;
+  language?: string;
+}): Promise<SuggestPromptsResponse> {
+  return request<SuggestPromptsResponse>("/api/suggest/prompts", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 // ---- File download helpers ----
 
 export function downloadTextFile(

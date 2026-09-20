@@ -201,10 +201,10 @@ export function HomeView() {
       >
         {/* Animated mesh background */}
         <div className="absolute inset-0 mesh-bg opacity-30 pointer-events-none" />
-        {/* Floating decorative shapes */}
-        <div className="absolute -top-20 -right-20 size-72 rounded-full bg-fuchsia-500/30 blur-3xl float-slow pointer-events-none" />
-        <div className="absolute -bottom-28 -left-28 size-72 rounded-full bg-violet-500/30 blur-3xl float-medium pointer-events-none" />
-        <div className="absolute top-1/3 right-1/4 size-32 rounded-full bg-pink-500/20 blur-2xl float-slow pointer-events-none" />
+        {/* Floating decorative orbs */}
+        <div className="orb orb-lg bg-fuchsia-500/30 -top-24 -right-16" />
+        <div className="orb orb-md bg-violet-500/30 -bottom-28 -left-20" />
+        <div className="orb orb-sm bg-pink-500/30 top-1/3 right-1/4" />
 
         <div className="relative max-w-3xl">
           <Badge
@@ -214,8 +214,8 @@ export function HomeView() {
             <Sparkles className="size-3" />
             AI Video Creator
           </Badge>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
-            <span className="brand-gradient-text">AI ile saniyeler</span>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-balance">
+            <span className="brand-gradient-text animated-gradient-x bg-[length:200%_100%] inline-block">AI ile saniyeler</span>
             <br />
             içinde video üret
           </h1>
@@ -232,7 +232,7 @@ export function HomeView() {
                 setWizard({ step: 0 });
                 go("create");
               }}
-              className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-lg shadow-fuchsia-500/30 hover:opacity-90 border-0 min-h-[44px]"
+              className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
             >
               <Wand2 className="size-4" />
               Hemen Başla
@@ -287,13 +287,13 @@ export function HomeView() {
                 onClick={() => pickMode(mode.id)}
                 className="group text-left"
               >
-                <Card className="glass card-glow h-full overflow-hidden hover:border-fuchsia-500/40 relative gradient-border">
+                <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden hover:border-fuchsia-500/40 relative gradient-border">
                   <div
-                    className={`h-1.5 w-full bg-gradient-to-r ${mode.gradient}`}
+                    className={`h-1.5 w-full bg-gradient-to-r animated-gradient-x bg-[length:200%_100%] ${mode.gradient}`}
                   />
                   <CardHeader>
                     <div
-                      className={`grid size-12 place-items-center rounded-xl bg-gradient-to-br ${mode.gradient} text-2xl shadow-md`}
+                      className={`grid size-12 place-items-center rounded-xl bg-gradient-to-br ${mode.gradient} text-2xl shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}
                     >
                       {mode.emoji}
                     </div>
@@ -322,8 +322,8 @@ export function HomeView() {
           desc="Konuyu gir, AI üretsin, indir & paylaş. Karmaşık kurulum yok."
         />
         <div className="relative mt-8">
-          {/* Connecting line on md+ */}
-          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-violet-500/40 via-fuchsia-500/40 to-pink-500/40" />
+          {/* Connecting line on md+ — animated gradient */}
+          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-0.5 bg-gradient-to-r from-violet-500/40 via-fuchsia-500/40 to-pink-500/40 animated-gradient-x bg-[length:200%_100%]" />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {HOW_IT_WORKS.map((s, i) => {
               const Icon = s.icon;
@@ -335,18 +335,18 @@ export function HomeView() {
                   viewport={{ once: true, amount: 0.2 }}
                   transition={{ duration: 0.45, delay: i * 0.1 }}
                 >
-                  <Card className="glass card-glow h-full text-center relative overflow-hidden">
+                  <Card className="glass card-glow shine-on-hover card-hover-lift h-full text-center relative overflow-hidden">
                     <CardContent className="pt-8 pb-6 px-6">
                       <div className="relative mx-auto mb-4 size-16">
                         <div
-                          className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${s.color} blur-md opacity-40`}
+                          className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${s.color} blur-md opacity-50 group-hover:opacity-80 transition-opacity`}
                         />
                         <div
-                          className={`relative grid size-16 place-items-center rounded-2xl bg-gradient-to-br ${s.color} text-white shadow-lg`}
+                          className={`relative grid size-16 place-items-center rounded-2xl bg-gradient-to-br ${s.color} text-white shadow-lg ring-2 ring-white/10`}
                         >
                           <Icon className="size-7" />
                         </div>
-                        <span className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-background border-2 border-fuchsia-500 text-xs font-bold text-fuchsia-500">
+                        <span className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-background border-2 border-fuchsia-500 text-xs font-bold text-fuchsia-500 pulse-glow">
                           {s.step}
                         </span>
                       </div>
@@ -364,7 +364,8 @@ export function HomeView() {
       </section>
 
       {/* Features */}
-      <section>
+      <section className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0 mesh-radial opacity-60 pointer-events-none" />
         <SectionHeader
           eyebrow="Öne çıkan özellikler"
           title="Tek stüdyo, tüm araçlar"
@@ -385,12 +386,14 @@ export function HomeView() {
                 variants={item}
                 whileHover={{ y: -4, rotate: -0.5 }}
               >
-                <Card className="glass card-glow h-full hover:border-fuchsia-500/40 transition-colors">
+                <Card className="glass card-glow shine-on-hover card-hover-lift h-full hover:border-fuchsia-500/40 transition-colors group">
                   <CardHeader>
                     <div
-                      className={`grid size-10 place-items-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md transition-transform group-hover:rotate-6`}
+                      className={`relative grid size-10 place-items-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md transition-transform group-hover:rotate-6 group-hover:scale-105`}
                     >
                       <Icon className="size-5" />
+                      {/* gradient ring on hover */}
+                      <span className="absolute -inset-1 rounded-xl ring-1 ring-fuchsia-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
                     <CardTitle className="text-base mt-3">{f.title}</CardTitle>
                     <CardDescription className="mt-1 text-xs leading-relaxed">
@@ -465,12 +468,12 @@ export function HomeView() {
                   onClick={() => go("detail", p.id)}
                   className="text-left group"
                 >
-                  <div className="relative overflow-hidden rounded-xl border border-border aspect-video bg-muted">
+                  <div className="relative overflow-hidden rounded-xl border border-border aspect-video bg-muted group/card shine-on-hover card-hover-lift">
                     {p.thumbnailUrl ? (
                       <img
                         src={p.thumbnailUrl}
                         alt={p.title}
-                        className="size-full object-cover transition-transform group-hover:scale-105"
+                        className="size-full object-cover transition-transform group-hover/card:scale-105"
                       />
                     ) : (
                       <div
@@ -483,8 +486,8 @@ export function HomeView() {
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <PlayCircle className="size-9 text-white drop-shadow" />
+                    <div className="absolute inset-0 grid place-items-center opacity-0 group-hover/card:opacity-100 transition-opacity">
+                      <PlayCircle className="size-9 text-white drop-shadow animate-pulse" />
                     </div>
                     <div className="absolute bottom-1 left-1 right-1">
                       <div className="flex items-center justify-between gap-1">

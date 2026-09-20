@@ -23,6 +23,8 @@ import {
   Cpu,
   Mic,
   Receipt,
+  Lightbulb,
+  ChevronDown,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import {
@@ -57,6 +59,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -71,6 +78,7 @@ import {
   analyzeProduct,
   uploadImage,
   fileToDataUrl,
+  suggestPrompts,
 } from "@/lib/api-client";
 
 const STEPS = ["Mod", "İçerik", "Yapılandırma", "Özet & Üret"];
@@ -143,7 +151,7 @@ export function CreateView() {
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all min-h-[36px] shrink-0",
                     active
-                      ? "border-fuchsia-500 bg-fuchsia-500/10 text-foreground"
+                      ? "border-fuchsia-500 bg-fuchsia-500/10 text-foreground pulse-glow"
                       : done
                       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15"
                       : "border-border text-muted-foreground cursor-not-allowed"
@@ -172,7 +180,9 @@ export function CreateView() {
                   <span
                     className={cn(
                       "h-px flex-1 transition-colors",
-                      done ? "bg-gradient-to-r from-emerald-500/60 to-fuchsia-500/40" : "bg-border"
+                      done
+                        ? "bg-gradient-to-r from-emerald-500/60 to-fuchsia-500/40 animated-gradient-x bg-[length:200%_100%]"
+                        : "bg-border"
                     )}
                   />
                 )}
@@ -243,24 +253,24 @@ function StepMode() {
               key={m.id}
               onClick={() => setWizard({ mode: m.id as VideoMode })}
               className={cn(
-                "group text-left",
-                active ? "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background rounded-2xl" : ""
+                "group text-left transition-transform",
+                active ? "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background rounded-2xl scale-[1.02]" : ""
               )}
             >
               <Card
                 className={cn(
-                  "h-full overflow-hidden transition-all hover:shadow-lg",
+                  "h-full overflow-hidden transition-all shine-on-hover card-hover-lift relative",
                   active
-                    ? "border-fuchsia-500/50"
+                    ? "border-fuchsia-500/60"
                     : "hover:border-fuchsia-500/30"
                 )}
               >
-                <div className={cn("h-1.5 w-full bg-gradient-to-r", m.gradient)} />
+                <div className={cn("h-1.5 w-full bg-gradient-to-r animated-gradient-x bg-[length:200%_100%]", m.gradient)} />
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div
                       className={cn(
-                        "grid size-12 place-items-center rounded-xl bg-gradient-to-br text-2xl shadow-md",
+                        "grid size-12 place-items-center rounded-xl bg-gradient-to-br text-2xl shadow-md transition-transform group-hover:scale-110 group-hover:-rotate-3",
                         m.gradient
                       )}
                     >
@@ -301,7 +311,8 @@ function TopicMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
   return (
-    <Card>
+    <Card className="glass card-glow overflow-hidden">
+      <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:200%_100%]" />
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-violet-500/20 text-violet-500">
@@ -325,6 +336,15 @@ function TopicMode() {
             className="min-h-24"
           />
         </div>
+        <PromptSuggestions
+          mode="topic"
+          topic={wizard.topic}
+          language={wizard.language}
+          onPick={(idea) => {
+            setWizard({ topic: idea });
+            toast.success("Konu seçildi");
+          }}
+        />
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Sahne sayısı</Label>
@@ -350,7 +370,8 @@ function YoutubeMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
   return (
-    <Card>
+    <Card className="glass card-glow overflow-hidden">
+      <div className="h-0.5 w-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 animated-gradient-x bg-[length:200%_100%]" />
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-rose-500/20 text-rose-500">
@@ -374,6 +395,15 @@ function YoutubeMode() {
             className="min-h-24"
           />
         </div>
+        <PromptSuggestions
+          mode="youtube"
+          topic={wizard.topic}
+          language={wizard.language}
+          onPick={(idea) => {
+            setWizard({ topic: idea });
+            toast.success("Konu seçildi");
+          }}
+        />
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex gap-3">
           <Info className="size-5 text-rose-500 shrink-0" />
           <div className="text-sm space-y-1">
@@ -403,11 +433,196 @@ function YoutubeMode() {
   );
 }
 
+// =========================================================
+// Shared prompt suggestions panel for TopicMode + YoutubeMode
+// =========================================================
+function PromptSuggestions({
+  mode,
+  topic,
+  language,
+  onPick,
+}: {
+  mode: string;
+  topic: string;
+  language: string;
+  onPick: (idea: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [curated, setCurated] = React.useState<string[]>([]);
+  const [ai, setAi] = React.useState<string[]>([]);
+  const [loadingCurated, setLoadingCurated] = React.useState(false);
+  const [loadingAi, setLoadingAi] = React.useState(false);
+  const [aiFetched, setAiFetched] = React.useState(false);
+
+  // Fetch curated ideas whenever the panel is opened (mode/language can change)
+  React.useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    setLoadingCurated(true);
+    setCurated([]);
+    setAi([]);
+    setAiFetched(false);
+    suggestPrompts({ mode, language })
+      .then((res) => {
+        if (!alive) return;
+        setCurated(res.curated || []);
+      })
+      .catch(() => {
+        if (alive) setCurated([]);
+      })
+      .finally(() => {
+        if (alive) setLoadingCurated(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, mode, language]);
+
+  const fetchAi = React.useCallback(async () => {
+    if (topic.trim().length < 3) return;
+    setLoadingAi(true);
+    try {
+      const res = await suggestPrompts({ topic, mode, language });
+      setAi(res.ai || []);
+      setAiFetched(true);
+    } catch {
+      setAi([]);
+      setAiFetched(true);
+    } finally {
+      setLoadingAi(false);
+    }
+  }, [topic, mode, language]);
+
+  const canAi = topic.trim().length >= 3;
+
+  const pickIdea = (idea: string) => {
+    onPick(idea);
+    setOpen(false);
+  };
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "group flex items-center justify-between gap-2 w-full rounded-xl border border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-2 text-sm transition-colors",
+            open && "bg-violet-500/10"
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <span className="grid size-6 place-items-center rounded-md bg-violet-500/20 text-violet-500">
+              <Lightbulb className="size-3.5" />
+            </span>
+            <span className="font-medium">💡 Konu Önerileri</span>
+          </span>
+          <ChevronDown
+            className={cn(
+              "size-4 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180"
+            )}
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2">
+        <div className="mt-3 space-y-3">
+          {/* Curated ideas */}
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Hazır Konular
+            </p>
+            {loadingCurated ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                Yükleniyor...
+              </div>
+            ) : curated.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {curated.map((idea, i) => (
+                  <motion.button
+                    key={idea + i}
+                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: i * 0.04 }}
+                    onClick={() => pickIdea(idea)}
+                    className="bg-violet-500/10 text-violet-600 dark:text-violet-300 hover:bg-violet-500/20 border border-violet-500/20 rounded-full px-3 py-1 text-xs transition-colors text-left max-w-full"
+                  >
+                    {idea}
+                  </motion.button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Şu an için öneri yok.</p>
+            )}
+          </div>
+
+          {/* AI enhancement */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                ✨ AI Önerileri
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={fetchAi}
+                disabled={!canAi || loadingAi}
+                className="h-7 px-2 text-xs btn-gradient text-white border-0 shine-on-hover relative overflow-hidden"
+              >
+                {loadingAi ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3" />
+                )}
+                {loadingAi ? "Üretiliyor..." : "AI ile geliştir"}
+              </Button>
+            </div>
+            {!canAi && (
+              <p className="text-[11px] text-muted-foreground">
+                AI önerileri için en az 3 karakter konu yazın.
+              </p>
+            )}
+            {loadingAi && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                AI fikirler üretiliyor (2-5 sn)...
+              </div>
+            )}
+            {!loadingAi && aiFetched && ai.length === 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                AI bu kez öneri üretemedi. Konuyu biraz daha detaylandırın.
+              </p>
+            )}
+            {!loadingAi && ai.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {ai.map((idea, i) => (
+                  <motion.button
+                    key={idea + i}
+                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: i * 0.06 }}
+                    onClick={() => pickIdea(idea)}
+                    className="bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300 hover:bg-fuchsia-500/20 border border-fuchsia-500/30 rounded-full px-3 py-1 text-xs transition-colors text-left max-w-full"
+                  >
+                    {idea}
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 function ScriptMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const [open, setOpen] = React.useState(false);
   return (
-    <Card>
+    <Card className="glass card-glow overflow-hidden">
+      <div className="h-0.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 animated-gradient-x bg-[length:200%_100%]" />
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-emerald-500/20 text-emerald-500">
@@ -437,6 +652,59 @@ function ScriptMode() {
             paragraf
           </p>
         </div>
+
+        {/* Example script starters (curated, no AI call) */}
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="group flex items-center justify-between gap-2 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-2 text-sm transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-emerald-500">
+                  <Lightbulb className="size-3.5" />
+                </span>
+                <span className="font-medium">Senaryo Önerileri</span>
+              </span>
+              <ChevronDown
+                className={cn(
+                  "size-4 text-muted-foreground transition-transform duration-200",
+                  open && "rotate-180"
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="mt-3 space-y-1.5">
+              {EXAMPLE_SCRIPTS.map((s, i) => (
+                <motion.li
+                  key={s.title + i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWizard({ customScript: s.body });
+                      setOpen(false);
+                      toast.success("Senaryo örneği yüklendi");
+                    }}
+                    className="w-full text-left rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40 px-3 py-2 transition-colors"
+                  >
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+                      {s.title}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                      {s.body}
+                    </p>
+                  </button>
+                </motion.li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Sahne sayısı (önerilen)</Label>
@@ -454,6 +722,67 @@ function ScriptMode() {
     </Card>
   );
 }
+
+const EXAMPLE_SCRIPTS: { title: string; body: string }[] = [
+  {
+    title: "Ürün Tanıtımı",
+    body: `Bugün sizinle tanıştırmak istediğimiz bir yenilik var.
+
+Yeni nesil akıllı cihaz, günlük rutininizi tamamen değiştiriyor.
+
+Sadece üç adımda kurulum, saniyeler içinde kullanıma hazır.
+
+Şık tasarımı her ortama uyum sağlıyor.
+
+Hemen keşfedin, farkı siz de görün.`,
+  },
+  {
+    title: "Eğitim / Açıklayıcı",
+    body: `Bir konuyu kısaca açıklayacağız.
+
+Önce temel kavramı tanımlayalım.
+
+Ardından neden önemli olduğunu görelim.
+
+Son olarak pratik bir örnekle bağlayalım.
+
+Bir sonraki adımda neler yapabileceğinizi gösterelim.`,
+  },
+  {
+    title: "Hikâye Anlatımı",
+    body: `Bir zamanlar, küçük bir atölyede büyük bir fikir doğdu.
+
+Yıllar süren denemeler, sayısız başarısızlık.
+
+Ama her deneme bir adım daha yaklaştırdı.
+
+Sonunda, bugün elinizdeki ürün ortaya çıktı.
+
+Bu sadece bir başlangıç.`,
+  },
+  {
+    title: "İlham / Motivasyon",
+    body: `Hayatın en güzel anları, cesur kararlarla başlar.
+
+Bugün attığın küçük bir adım, yarının büyük başarısı olabilir.
+
+Durma. Harekete geç.
+
+Çünkü sen, başarmayı hak ediyorsun.`,
+  },
+  {
+    title: "Duyuru / CTA",
+    body: `Duyurumuz var!
+
+Yeni koleksiyon resmi olarak yayında.
+
+Sınırlı süreyle özel indirimden yararlanın.
+
+Hemen tıklayın, fırsatı kaçırmayın.
+
+Seni bekliyoruz.`,
+  },
+];
 
 function ProductMode() {
   const wizard = useApp((s) => s.wizard);
@@ -596,6 +925,48 @@ function ProductMode() {
               Ürün fotoğrafları AI ile analiz edilecek. "Analiz et" butonuyla
               örneği görün.
             </p>
+          </div>
+
+          {/* Product info card + example chips */}
+          <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <span className="grid size-7 place-items-center rounded-lg bg-amber-500/20 text-amber-500 shrink-0">
+                <Lightbulb className="size-3.5" />
+              </span>
+              <div className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">İpucu: </span>
+                Net, iyi aydınlatılmış ürün fotoğrafları yükleyin. Beyaz arka plan
+                en iyi sonucu verir.
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Örnek ürün tipleri
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  "Akıllı kahve makinesi",
+                  "Kablosuz kulaklık",
+                  "Doğal cilt bakım seti",
+                ].map((label, i) => (
+                  <motion.button
+                    key={label}
+                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => {
+                      setWizard({ topic: label });
+                      toast.success("Örnek ürün tipi işaretlendi", {
+                        description: label,
+                      });
+                    }}
+                    className="bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 border border-amber-500/20 rounded-full px-3 py-1 text-xs transition-colors"
+                  >
+                    {label}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <Button
@@ -930,7 +1301,7 @@ function ConfigSection({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="glass card-glow overflow-hidden">
+    <Card className="glass card-glow shine-on-hover card-hover-lift overflow-hidden">
       <div className={cn("h-1 w-full bg-gradient-to-r", accent)} />
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
@@ -1077,9 +1448,9 @@ function StepSummary() {
   return (
     <div className="space-y-4">
       {/* Receipt-styled summary card */}
-      <Card className="glass overflow-hidden relative">
+      <Card className="glass shine-on-hover card-hover-lift overflow-hidden relative">
         {/* gradient header */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:200%_100%]" />
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">

@@ -1,0 +1,271 @@
+     1→     1→# Hyperframe Studio - Worklog
+     2→     2→
+     3→     3→## Project: AI Video Creator with Hyperframes, LLM + TTS, Multi-provider, Multilingual
+     4→     4→
+     5→     5→### Architecture Overview
+     6→     6→- **App name**: Hyperframe Studio
+     7→     7→- **Stack**: Next.js 16 (App Router, single `/` route) + TypeScript + Tailwind 4 + shadcn/ui + Prisma/SQLite
+     8→     8→- **AI**: z-ai-web-dev-sdk (LLM, TTS, VLM, Image Generation) — backend only
+     9→     9→- **State**: Zustand (client) + React Query (server)
+    10→    10→- **Multi-page**: client-side view switching within single route (Home, Create, Projects, Detail/Player, Settings, Templates)
+    11→    11→
+    12→    12→### Core Capabilities
+    13→    13→1. Topic → Script (LLM) → Scenes + Narration → TTS audio + Generated images → Animated HTML/CSS player with subtitles
+    14→    14→2. Product Photos → VLM analysis → Marketing script → TTS + product showcase video
+    15→    15→3. YouTube-style subtitle video (SRT/VTT export)
+    16→    16→4. Multi-language (tr, en, es, de, fr, ar, zh, ja, ru, pt, it, hi)
+    17→    17→5. Multi-provider LLM/TTS UI (zai default functional; openai/elevenlabs/anthropic configurable)
+    18→    18→6. Content-aware voice tonation (professional, energetic, calm, dramatic, friendly, inspirational, news, documentary)
+    19→    19→
+    20→    20→### Video Approach
+    21→    21→Scene-based animated HTML/CSS player (hyperframe-style): scenes play sequentially with timed transitions, audio syncs with narration, subtitles display timed. Plus SRT/VTT export for YouTube.
+    22→    22→
+    23→    23→---
+    24→    24→Task ID: 1
+    25→    25→Agent: Main (Z.ai Code)
+    26→    26→Task: Foundation - Prisma schema, shared types, provider config, AI helper libs, folder structure, API contract
+    27→    27→
+    28→    28→Work Log:
+    29→    29→- Inspected existing project scaffold (Next.js 16, shadcn/ui, Prisma, z-ai-web-dev-sdk installed)
+    30→    30→- Read VLM/LLM/TTS/Image-Generation skill docs to confirm SDK APIs
+    31→    31→- Designed DB schema, shared types, and provider registry
+    32→    32→- (writing files next)
+    33→    33→
+    34→    34→Stage Summary:
+    35→    35→- Foundation in progress
+    36→    36→
+    37→    37→---
+    38→    38→Task ID: 2-a
+    39→    39→Agent: Frontend Styling Expert (GLM sub-agent)
+    40→    40→Task: Build the complete multi-view frontend for Hyperframe Studio — AppShell, sidebar/topbar/footer, theme toggle, all 6 views (home/create/projects/detail/settings/templates), and the showpiece ScenePlayer + SceneRenderer + SceneThumbnail components.
+    41→    41→
+    42→    42→Work Log:
+    43→    43→- Read worklog.md, src/lib/{types,providers,store,utils,subtitles,project-store,settings-store,storage}.ts, all API route handlers, existing layout.tsx/page.tsx, and the shadcn/ui Sheet/Select/Card/Button/Badge/Slider/Tabs components to confirm exact contracts.
+    44→    44→- Appended to src/app/globals.css: custom scrollbar (.scrollbar-thin), .scene-stage utility, @keyframes gradient-shift / ken-burns / float-slow / float-medium / shimmer, .brand-gradient-text, .no-scrollbar.
+    45→    45→- Created src/lib/api-client.ts: typed wrappers for every endpoint (listProjects, createProject, getProject, deleteProject, renderProject, generateScript, generateTts, generateImage, analyzeProduct, getSettings, saveSettings, uploadImage) plus downloadTextFile / downloadRemoteFile / formatDuration / formatMs / timeAgo / fileToDataUrl helpers and an ApiError class. All URLs relative; throws with server message.
+    46→    46→- Updated src/app/layout.tsx: kept Geist fonts; wrapped children in ThemeProvider (next-themes, attribute="class", defaultTheme="dark"); metadata title "Hyperframe Studio — AI Video Creator" + Turkish description; root div min-h-screen flex flex-col bg-background text-foreground; switched Toaster to sonner's <Toaster richColors position="top-right"> (the project already had both ui/toaster.tsx and ui/sonner.tsx; using sonner for toast() ergonomics).
+    47→    47→- Replaced src/app/page.tsx with a tiny "use client" component rendering <AppShell />.
+    48→    48→- Created src/components/app/theme-provider.tsx (next-themes wrapper) and theme-toggle.tsx (Sun/Moon toggle, mounted guard).
+    49→    49→- Created src/components/app/sidebar.tsx: fixed 72-wide desktop sidebar (hidden on mobile) + a <Sheet>-based MobileNav drawer. Brand logo (gradient square "HF" + "Hyperframe Studio"). Nav items: Ana Sayfa (LayoutDashboard), Video Oluştur (Clapperboard), Projelerim (FolderOpen), Şablonlar (LayoutTemplate), Ayarlar (Settings). Active state ring + gradient icon. "Yeni Video" primary button (violet→fuchsia→pink gradient) calls go("create").
+    50→    50→- Created src/components/app/topbar.tsx: mobile-only sticky top bar with hamburger (opens MobileNav Sheet), compact logo, theme toggle.
+    51→    51→- Created src/components/app/footer.tsx: mt-auto slim footer with "Hyperframe Studio · AI destekli video üretimi" + LLM/TTS/VLM badges. Sticks to bottom via the flex-col root layout.
+    52→    52→- Created src/components/app/app-shell.tsx: composes Sidebar + MobileNav + Topbar + a main content area (max-w-7xl, md:pl-72 to clear the fixed sidebar) that switches on useApp(s=>s.view) into one of the 6 view components, then Footer. Adds a floating desktop theme toggle.
+    53→    53→- Created src/components/player/scene-renderer.tsx: renders a single scene inside an absolute-inset stage. Background = STYLE_MAP[style].gradient as an animated-gradient layer; if scene.imageUrl present, layers it with ken-burns + dark scrim + side scrims for legibility. FloatingShapes decoration for modern/playful/vibrant. SceneContent switches per type: title (huge headline + accent underline), text (heading + paragraph), image (caption overlay), quote (italic + watermark), stats (count-up via framer-motion useMotionValue/animate), cta (gradient pill button). variantsFor maps scene.animation → framer-motion initial/animate/exit variants (fade, slide-up, slide-left, zoom, bounce, flip, ken-burns). AnimatePresence for transitions. Honors staticFrame prop to render a still first frame for thumbnails.
+    54→    54→- Created src/components/player/scene-thumbnail.tsx: thin wrapper around SceneRenderer with staticFrame + aspect class. Used by detail-view scene strip and project cards.
+    55→    55→- Created src/components/player/scene-player.tsx: the showpiece. 16:9 (or chosen aspect) stage with rounded-2xl + shadow-2xl. Tracks currentSceneIndex + elapsedInScene via requestAnimationFrame; advances to next scene when durationMs elapses; stops at end. <audio> element synced to project.audioUrl (pause/sync with isPlaying). Center play overlay when paused. Subtitle overlay (pill, AnimatePresence). Controls bar: scrubber input (range) wired to compute scene index + offset from global ms, SkipBack/Forward ±3s, play/pause, volume slider that auto-expands on hover, current/total time, captions toggle, fullscreen via requestFullscreen. Scene strip at bottom (clickable thumbnails). Resets when project.id changes. Works without audio (silent visual preview + "seslendirme yok" badge). All in plain <img>/<audio> (no next/image) per spec.
+    56→    56→- Created src/components/views/home-view.tsx: hero with brand-gradient-text headline "AI ile saniyeler içinde video üret", Turkish subtext (Hyperframes animasyonlar, LLM senaryo, TTS seslendirme, çoklu dil & provider), 4 MODES cards (click → setWizard({mode, step:0}) + go("create")), 8-card "Öne çıkan özellikler" grid (Hyperframes animasyon, Çoklu LLM, Çoklu TTS, VLM ürün analizi, YouTube altyazı, 12 dil, içerik duyarlı tonlama, sahne animasyon stilleri), and recent projects strip (listProjects, up to 6 thumbnails, click → go("detail")). framer-motion stagger entrance, hover lift, Lucide icons, skeleton loaders, empty state CTA.
+    57→    57→- Created src/components/views/create-view.tsx: 4-step wizard with step indicator pills (Mod / İçerik / Yapılandırma / Özet & Üret). Step 0 picks VideoMode. Step 1 branches by mode: TopicMode (Textarea + targetScenes Slider 3-8), ProductMode (dropzone multi-upload → uploadImage → data URLs stored in wizard.productImages; Analiz et button → analyzeProduct first image → result card with name/category/features/selling points), ScriptMode (large Textarea, word/paragraph counter), YoutubeMode (topic + SRT/VTT export note + targetScenes). Step 2 (config): language select (LANGUAGES with flags), tone grid (TONES emoji+desc), style grid (STYLES gradient swatches), aspect ratio (16:9/9:16/1:1/4:5), LLM provider select, TTS provider select (auto-recommends voice on change), voice select + "Otomatik öner" button (recommendVoice). ProviderBadges shows "Yerleşik — anahtar gerekmez" for zai / "API anahtarı gerekir (Ayarlar'dan)" for others. Step 3: summary dl of all choices + big "Videoyu Üret" button → createProject(wizard) → renderProject(id,{productImages,customScript,targetScenes}) → toast.success("Üretim başladı") → resetWizard + go("detail", id). Geri/İleri nav with İleri disabled until step valid. Wizard state persists via Zustand store.
+    58→    58→- Created src/components/views/projects-view.tsx: gallery grid with status filter Tabs (Tümü / Hazır / Üretiliyor / Taslak with counts). Each card: thumbnail (or gradient placeholder with mode emoji), mode badge, status badge (draft gray, generating amber pulse, ready emerald, error rose), language flag, duration, relative time, hover play overlay + "Aç" → go("detail"). Delete with AlertDialog confirm. Skeleton loaders + friendly empty state CTA. Loads via listProjects on mount.
+    59→    59→- Created src/components/views/detail-view.tsx: polls getProject(id) every 2.5s while status === "generating". Generating: beautiful progress UI with 4 steps (Senaryo yazılıyor / Görseller üretiliyor / Seslendirme yapılıyor / Altyazılar oluşturuluyor) cycling active, spinner ring, gradient glow. Ready: <ScenePlayer/> big with title/meta, right panel listing scenes as SceneThumbnail mini-renders (click to seek), meta card (Mod/Dil/Ton/Stil/Süre/Sahne sayısı), action buttons SRT İndir / VTT İndir (SRT→VTT conversion: replace commas in timestamps with dots + WEBVTT header) / Sesi İndir / Yeniden Oluştur (re-calls renderProject) / Sil. Error: message + retry button. All downloads via client-side blob + <a download>.
+    60→    60→- Created src/components/views/settings-view.tsx: two sections (LLM Sağlayıcıları, TTS Sağlayıcıları) of ProviderCard components. Each card: name + "Yerleşik" badge for zai (no key input, always enabled note), enabled Switch, password Input with show/hide eye toggle for non-builtin, website link "Anahtar al", models/voices list. Plus a "Genel" card with default language/tone/style selects stored to localStorage (hf:defaults). Save → saveSettings + toast.success.
+    61→    61→- Created src/components/views/templates-view.tsx: 12 pre-made templates (Ürün Lansmanı, Teknoloji Haber, Motivasyon Paylaşımı, Eğitim Anlatımı, YouTube Shorts 9:16, Kurumsal Tanıtım, Belgesel Fragmanı, Sosyal Medya Reklamı 1:1, English Pitch, Promo en Español, Minimal Çağrı, Cesur Duyuru). Each card: gradient banner with emoji + aspect badge, name, desc, mode/tone/style/language micro-badges. Click → setWizard({mode, tone, style, language, aspectRatio, step:1}) + go("create"). CTA card at bottom for "Sıfırdan Başla".
+    62→    62→- Ran `bun run lint` — clean (0 errors, 0 warnings after removing two unused eslint-disable directives).
+    63→    63→- Verified dev server: GET / returns HTTP 200 with proper HTML containing "Hyperframe Studio", "Ana Sayfa", "Projelerim", "Yeni Video" and brand-gradient-text styling. API endpoints /api/projects and /api/settings return 200. Dev log shows no active compile errors in the new files (earlier "module not found" entries were stale, before files were created).
+    64→    64→
+    65→    65→Stage Summary:
+    66→    66→Files created:
+    67→    67→- src/lib/api-client.ts
+    68→    68→- src/components/app/{theme-provider,theme-toggle,sidebar,topbar,footer,app-shell}.tsx
+    69→    69→- src/components/player/{scene-renderer,scene-thumbnail,scene-player}.tsx
+    70→    70→- src/components/views/{home-view,create-view,projects-view,detail-view,settings-view,templates-view}.tsx
+    71→    71→
+    72→    72→Files updated:
+    73→    73→- src/app/layout.tsx (ThemeProvider + metadata + root div)
+    74→    74→- src/app/page.tsx (renders <AppShell />)
+    75→    75→- src/app/globals.css (appended scrollbar + animations + .scene-stage + .brand-gradient-text; existing tokens untouched)
+    76→    76→
+    77→    77→Decisions / caveats:
+    78→    78→- Used sonner's <Toaster> (already present as src/components/ui/sonner.tsx) in layout instead of the legacy radix <Toaster> (src/components/ui/toaster.tsx) — gives richColors + position control and supports toast() calls used throughout. The legacy toaster file is left untouched (unused).
+    79→    79→- All images rendered with plain <img> (no next/image) per spec, since /assets/* and data URLs are dynamic.
+    80→    80→- All fetch URLs are relative.
+    81→    81→- Detail view polls via setTimeout chain (recursive 2.5s) inside the effect rather than setInterval — cleaner cleanup and avoids overlapping requests.
+    82→    82→- ScenePlayer computes scene boundaries from sceneStartsMs memo; scrubber is an opacity-0 native range input layered over a styled progress bar so keyboard/drag are accessible.
+    83→    83→- For ProductMode, both the persisted /assets URL (from /api/upload) and the original data URL would be useful; we store the data URL in wizard.productImages so it can be sent directly to the render API's productImages array (which the backend feeds to /api/analyze/product via toDataUrl). The upload step still runs so the asset is on disk for display, but render uses the data URL form. This matches the render route's expectation (productImages: string[] of base64 data urls).
+    84→    84→- Local "defaults" (language/tone/style) stored in localStorage key "hf:defaults" — these are not yet wired into create-view defaults; can be picked up in a follow-up if desired (the wizard already has sensible defaults).
+    85→    85→- The `<Toaster />` from "@/components/ui/sonner" is rendered once at the root layout. No per-page toasters.
+    86→    86→- Lint clean. Dev server healthy. No new routes created (everything under single `/`).
+    87→    87→
+    88→    88→---
+    89→    89→Task ID: 4
+    90→    90→Agent: Main (Z.ai Code)
+    91→    91→Task: Integration verification, bug fix, end-to-end testing with agent-browser
+    92→    92→
+    93→    93→Work Log:
+    94→    94→- Dispatched frontend-styling-expert subagent (Task 2-a) which built the entire multi-view SPA (home, create wizard, projects, detail/player, settings, templates) + scene player. Lint clean, page renders 200.
+    95→    95→- Tested API endpoints: /api/projects, /api/settings return valid JSON.
+    96→    96→- agent-browser end-to-end test: home → create wizard (4 steps) → generated a 5-scene Turkish video "Yapay Zeka ile Video Üretiminin Geleceği".
+    97→    97→- Found TTS bug: Z.ai TTS API rejects `response_format: "mp3"` (error 1214: 不支持当前response_format值). Fixed generateTtsAudio default → "wav"; updated render route + tts route to use wav; added proper WAV concatenation (concatWav) so multi-chunk narrations merge correctly (rewrite RIFF + data chunk sizes).
+    98→    98→- Re-rendered project: full pipeline now succeeds end-to-end (LLM script 5 scenes → 5 AI images → TTS wav audio 1.4MB → SRT subtitles with correct timestamps).
+    99→    99→- Verified player: title/scene rendering, play/pause, timeline scrubber (0:00/0:32), ±3s skip, mute/volume, subtitle toggle, fullscreen, scene navigation, SRT/VTT/audio download buttons.
+   100→   100→- Verified VLM: tested /api/analyze/product with an AI-generated image → returned Turkish product name, category, 4 features, description, selling points, imagePrompt. Product-photo→video flow confirmed.
+   101→   101→- Verified settings view: Z.ai (Yerleşik, always-on), OpenAI/Claude/Gemini cards with API key inputs + enable switches, TTS providers (Z.ai/ElevenLabs/OpenAI), Kaydet button.
+   102→   102→- Verified templates view: 8 pre-made presets (Ürün Lansmanı, Teknoloji Haber, Motivasyon, Eğitim, YouTube Shorts, Kurumsal, Belgesel, Sosyal Medya Reklamı) that pre-fill the wizard.
+   103→   103→- Lint: clean (0 errors).
+   104→   104→
+   105→   105→Stage Summary:
+   106→   106→- FULLY WORKING end-to-end. Verified flows: topic→video, product→VLM→video, YouTube SRT, multi-language, multi-provider UI, 8 content-aware tones, animated scene player with audio+subtitles+downloads.
+   107→   107→- Sticky footer confirmed (contentinfo at bottom of all views).
+   108→   108→- Dark mode default, theme toggle works.
+   109→   109→- All deliverables from user request met.
+   110→   110→
+   111→   111→Unresolved / next-phase opportunities:
+   112→   112→- Actual MP4 export via Playwright frame capture + ffmpeg (currently "video" = animated HTML player + downloadable SRT/VTT/audio). Could add a render-to-mp4 mini-service.
+   113→   113→- VLM/TTS/image-gen take 60-180s for 5 scenes; could add a progress bar per scene + partial streaming.
+   114→   114→- ElevenLabs/OpenAI TTS + OpenAI/Claude/Gemini LLM are UI-configurable but route through Z.ai engine (no external API calls yet). Could wire real external provider calls when user supplies keys.
+   115→   115→
+   116→   116→---
+   117→   117→Task ID: 5-fe
+   118→   118→Agent: Frontend Styling Expert (GLM sub-agent)
+   119→   119→Task: Add Dashboard view with recharts visualizations, add Scene Editor to Detail view, add Duplicate (Kopyala) action, and apply premium styling polish (glassmorphism, mesh gradients, count-ups, micro-interactions) across the app.
+   120→   120→
+   121→   121→Work Log:
+   122→   122→- Read worklog.md and all existing files (store, api-client, types, providers, app-shell, sidebar, globals.css, all 6 views, scene player/renderer/thumbnail, chart.tsx, slider.tsx, toggle-group.tsx, package.json) to match conventions. Verified dev server already healthy (GET / 200) and confirmed /api/stats, /api/projects/[id]/duplicate, PATCH /api/projects/[id] all return 200 in dev.log tail.
+   123→   123→- Updated src/lib/store.ts: added "dashboard" to the ViewName union (kept all existing fields intact).
+   124→   124→- Updated src/lib/api-client.ts: imported Scene type; added StatsData interface, getStats(), duplicateProject(id) (POST), updateProject(id, patch) (PATCH) per the new API contracts.
+   125→   125→- Updated src/components/app/app-shell.tsx: imported DashboardView; added `{view === "dashboard" && <DashboardView />}` switch case.
+   126→   126→- Updated src/components/app/sidebar.tsx: added BarChart3 import; inserted "Panel" nav item (id "dashboard") AFTER "Projelerim" and BEFORE "Şablonlar" in NAV_ITEMS. Added SidebarStatsBadge component (fetches listProjects, shows total project count, click → go("projects")) placed above the info box. Added micro-animations on nav items: sliding gradient bg on hover + icon scale + icon gradient bg on hover.
+   127→   127→- Appended to src/app/globals.css: @keyframes mesh-shift, @keyframes pulse-glow, @keyframes shimmer-border; .mesh-bg (radial-gradient mesh, 22s drift, light-mode softer variant); .pulse-glow; .gradient-border (mask-based animated gradient border via ::before); .glass (bg-card/60 + backdrop-blur 16px); .glass-strong (bg-card/80 + backdrop-blur 24px); .card-glow (hover shadow with fuchsia/violet tints); .text-gradient (violet→fuchsia→pink clip-text); .hf-range (custom range slider with gradient track + glowing thumb, for player scrubber); also tweaked .scrollbar-thin thumb hover to a violet→fuchsia gradient. All existing tokens/animations preserved.
+   128→   128→- Created src/components/views/dashboard-view.tsx (the showpiece). Features:
+   129→   129→  • Header "Panel" + subtitle "Üretim istatistiklerin ve genel bakış" with floating blurred gradient circles.
+   130→   130→  • Empty state (totals.total === 0): mesh-bg background, large gradient icon tile, "Henüz video yok" copy, CTA "İlk videonu oluştur" → go("create").
+   131→   131→  • KPI cards row (4 cards in responsive 2x2 / 1x4 grid): Toplam Video (total), Hazır (ready), Toplam Süre (totalDurationSec formatted as "Xm Ys"), Toplam Sahne (totalScenes). Each card uses glass + card-glow + gradient icon tile + count-up animation via framer-motion useMotionValue/animate (800ms easeOut) + subtitle + ArrowRight that animates on hover.
+   132→   132→  • Activity chart (recharts AreaChart): last 14 days daily video creation. Violet→fuchsia gradient area fill (linearGradient), gradient stroke, custom dark tooltip, CartesianGrid, XAxis/YAxis with muted-foreground text. 220px height, ResponsiveContainer.
+   133→   133→  • Distribution charts row (2-col on lg): Left = Mode distribution as donut PieChart (innerRadius 55, outerRadius 85, paddingAngle 3) with 7-color palette (violet/fuchsia/pink/amber/emerald/cyan/rose) + side legend with emoji + label + percentage + count. Right = Language distribution as horizontal BarChart (layout="vertical") with flag-emoji labels, violet→fuchsia gradient bars, value labels, custom tooltip.
+   134→   134→  • Provider usage section: 2 cards side by side — LLM provider usage (byLlmProvider) + TTS provider usage (byTtsProvider). Each shows provider name (resolved via getLLMProvider/getTTSProvider) + count + percentage + animated progress bar + count badge. Accent color theming (violet vs fuchsia).
+   135→   135→  • Recent projects mini-list: top 5 from listProjects, each row has thumbnail (or gradient fallback), title (truncates), mode/scene/duration subtitle, status pill, time ago. Click → go("detail", id).
+   136→   136→  • Loading: skeleton KPI cards + skeleton chart areas.
+   137→   137→  • All cards use .glass + .card-glow. framer-motion stagger entrance on KPI cards.
+   138→   138→- Updated src/components/views/detail-view.tsx:
+   139→   139→  • Added "Sahne Düzenle" (PencilLine) toggle button in the action bar, only visible when status === "ready". Toggle on → enters edit mode (gradient active style).
+   140→   140→  • Added "Kopyala" (Copy) button in action bar (next to Yeniden Oluştur / Sil). Calls duplicateProject(id), toasts "Proje kopyalandı", navigates to detail of the new copy if it has scenes (otherwise to projects).
+   141→   141→  • Added gradient ring/border glow around the player stage: wrapper div with `bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40 p-[1.5px]` containing the rounded ScenePlayer.
+   142→   142→  • Updated meta card icons: Globe for Dil (was Languages), AudioLines for Ton (was Sparkles), Palette for Stil (kept), Clock for Süre (kept), Layers for Sahne sayısı (was Play), Clapperboard for Mod (kept).
+   143→   143→  • Updated action bar icons: SRT=FileText, VTT=Captions, Audio=Download (was AudioLines). All action buttons now have icons.
+   144→   144→  • Implemented SceneEditor component (power-feature): when editMode ON, replaces ReadyView. Lists ALL scenes as editable cards. Each SceneEditorCard has:
+   145→   145→    - Scene index badge (gradient) + type Select (title/text/image/quote/stats/cta) + animation Select (fade/slide-up/slide-left/zoom/bounce/flip/ken-burns) + delete (Trash2) button.
+   146→   146→    - Live SceneThumbnail preview (updates as you edit).
+   147→   147→    - title Input (optional), text Textarea (on-screen), narration Textarea (TTS source), subtitle Input (max 100), imagePrompt Input + "Yeniden Üret" button that calls generateImage({ prompt, projectId, sceneIdx }) and patches scene.imageUrl.
+   148→   148→    - durationMs Slider (1500-15000ms, step 500) with seconds badge and 1.5s/15s labels.
+   149→   149→    - accentColor row: 8 preset swatches (#7c3aed, #d946ef, #ec4899, #f59e0b, #10b981, #06b6d4, #f43f5e, #64748b) with ring on selected + custom conic-gradient native color input tile.
+   150→   150→    - Motion layout animation on cards (staggered entrance).
+   151→   151→  • Live preview: SceneEditor renders a ScenePlayer fed with the local edited scenes (real-time reflection). Dirty flag via JSON.stringify comparison. Sticky bottom action bar with "Değişiklikleri Kaydet" (gradient, disabled when not dirty or saving) + İptal (X icon). Save calls updateProject(id, { scenes }) → toast "Sahnelar kaydedildi ve altyazılar güncellendi" → onSaved(updated) sets project + exits edit mode. Cancel: if dirty, AlertDialog confirm "Yine de çık"; else just exits.
+   152→   152→  • "Sahne Ekle" (Plus) button at bottom — appends new blank text scene { type:"text", text:"Yeni sahne metni", narration:"Yeni sahne seslendirmesi.", durationMs:4000, animation:"fade", accentColor:"#d946ef" }.
+   153→   153→  • Delete scene: AlertDialog confirm; re-indexes remaining scenes.
+   154→   154→- Updated src/components/views/projects-view.tsx:
+   155→   155→  • Added "Kopyala" (Copy) button (Duplicate icon) to each project card next to Aç/Sil. Calls duplicateProject(id), toasts "Proje kopyalandı", refreshes list, navigates to new project detail if it has scenes.
+   156→   156→  • Added search Input (filters by title or topic, case-insensitive) with Search icon.
+   157→   157→  • Added sort Select (newest / oldest / duration / title).
+   158→   158→  • Added grid/list view-toggle buttons (LayoutGrid / List icons) in header.
+   159→   159→  • List view: ProjectRow component with horizontal layout — 80px thumbnail (with play overlay on hover), title + meta + status, Aç/Kopyala/Sil actions.
+   160→   160→  • Grid view cards upgraded: glass + card-glow, gradient overlay on thumbnail on hover, play icon scale-in, status badge with pulse dot for generating.
+   161→   161→- Updated src/components/views/home-view.tsx:
+   162→   162→  • Hero: added .mesh-bg (opacity 30%) animated background behind content. Added 3 floating decorative blurred gradient circles (float-slow / float-medium).
+   163→   163→  • Added KPI stat strip below hero: 5 glass pills (Dil=12, Ton=8, Mod=4, LLM=4, TTS=3) with count-up animation via framer-motion useMotionValue/animate.
+   164→   164→  • Mode cards: glass + card-glow + gradient-border (animated) + ArrowRight slides in on hover.
+   165→   165→  • Feature grid cards: glass + card-glow + hover lift + slight rotate (-0.5deg) on hover.
+   166→   166→  • Recent projects: "Tümünü Gör" link → go("projects") with ArrowRight.
+   167→   167→  • Added "Nasıl Çalışır?" (How it works) section: 3 numbered cards (1 Konu/Fotoğraf Gir, 2 AI Üretir, 3 İndir & Paylaş) with gradient icon tiles + step badge + connecting gradient line on md+.
+   168→   168→- Updated src/components/views/create-view.tsx:
+   169→   169→  • Step indicator: redesigned as connected progress bar with gradient fill for completed steps, pulsing ping dot on current step, connecting lines between steps (gradient when done, border when not).
+   170→   170→  • Added ConfigSection wrapper component: glass + card-glow + gradient header strip + icon-titled CardTitle.
+   171→   171→  • StepConfig reorganized into 2 ConfigSection cards: "Dil ve Stil" (Palette icon, violet→fuchsia) and "Sağlayıcılar" (Cpu icon, fuchsia→pink).
+   172→   172→  • Section labels now have icons: Globe (Dil), AudioLines (Ton), RectangleHorizontal (En-boy), Cpu (LLM), Mic (TTS / Ses).
+   173→   173→  • StepSummary: redesigned as receipt-styled card — gradient header strip, Receipt icon in gradient tile, dashed-border inner "receipt" body containing the dl grid, then glass-strong gradient CTA card.
+   174→   174→- Updated src/components/views/templates-view.tsx: template cards now use glass + card-glow; taller gradient banners (aspect-[3/1.6]) with decorative blurred circles + dot pattern; emoji scales on hover (duration-500); slide-up "Kullan →" CTA panel slides in from bottom on hover.
+   175→   175→- Updated src/components/views/settings-view.tsx: ProviderCard now has emoji tile (🤖 Z.ai, 🧠 OpenAI, 📚 Anthropic, 💎 Gemini, 🔊 ElevenLabs, 🗣️ OpenAI TTS) with gradient ring (emerald for builtin, fuchsia for enabled external, muted for disabled); enabled providers get ring-1 ring-fuchsia-500/30; the Z.ai builtin card gets .pulse-glow (always-on animated box-shadow pulse). Card uses glass + card-glow.
+   176→   176→- Verification: ran `bun run lint` → 0 errors, 0 warnings. dev.log tail shows successful compiles + GET / 200, GET /api/stats 200, GET /api/projects 200, GET /api/projects/[id] 200. Used agent-browser: opened http://localhost:3000/, clicked "Panel" nav item — dashboard rendered with KPI cards (1 video, 1 hazır, "0d 32s" süre, 5 sahne), Son 14 Gün Aktivite area chart, Mod Dağılımı donut pie (💡 Konu → Video 100%), Dil Dağılımı horizontal bar (🇹🇷 TR), LLM/TTS sağlayıcı cards (Z.ai GLM / Z.ai TTS), Son Projeler list. Took screenshot /tmp/dashboard.png. Clicked project → Detail view rendered with "Sahne Düzenle" + "Kopyala" + "Yeniden Oluştur" + "Sil" action bar. Clicked "Sahne Düzenle" → Scene Editor rendered all 5 scene cards with Tür/Animasyon/Seslendirme metni/Süre/Vurgu rengi controls, sticky action bar showing "5 sahne · kaydedildi" with disabled "Değişiklikleri Kaydet" button. Took screenshot /tmp/scene-editor.png. Navigated to Projelerim → confirmed search box, sort dropdown, grid/list toggle, "Kopyala" button on project card. Sidebar shows "Toplam proje 1" mini badge.
+   177→   177→
+   178→   178→Stage Summary:
+   179→   179→Files created:
+   180→   180→- src/components/views/dashboard-view.tsx (new — Dashboard showpiece with recharts visualizations)
+   181→   181→
+   182→   182→Files updated:
+   183→   183→- src/lib/store.ts (added "dashboard" to ViewName union)
+   184→   184→- src/lib/api-client.ts (added Scene import; StatsData interface; getStats(); duplicateProject(); updateProject())
+   185→   185→- src/components/app/app-shell.tsx (imported + rendered DashboardView)
+   186→   186→- src/components/app/sidebar.tsx (added Panel nav item; SidebarStatsBadge; nav micro-animations)
+   187→   187→- src/app/globals.css (appended mesh-bg, glass, glass-strong, card-glow, gradient-border, text-gradient, pulse-glow, hf-range, keyframes; enhanced scrollbar-thin hover)
+   188→   188→- src/components/views/detail-view.tsx (Scene Editor with live preview; Kopyala button; gradient player ring; updated meta + action icons)
+   189→   189→- src/components/views/projects-view.tsx (Kopyala button; search; sort; grid/list view toggle; polished cards)
+   190→   190→- src/components/views/home-view.tsx (mesh-bg hero; floating shapes; KPI pills strip with count-up; "Nasıl Çalışır?" section; glass + card-glow + gradient-border on cards)
+   191→   191→- src/components/views/create-view.tsx (connected progress bar with pulse; ConfigSection glass cards with section icons; receipt-styled summary)
+   192→   192→- src/components/views/templates-view.tsx (taller banners with decorative pattern; slide-up "Kullan" CTA; glass + card-glow)
+   193→   193→- src/components/views/settings-view.tsx (provider emoji tiles; gradient ring on enabled; pulse-glow on Z.ai card; glass + card-glow)
+   194→   194→
+   195→   195→Decisions / caveats:
+   196→   196→- All new code follows the existing pattern of using `ease: "easeOut"` as a string in framer-motion variants. This triggers a TS warning under strict tsc (ease wants `Easing` literal type), but matches the pre-existing pattern in home-view/templates-view. ESLint passes cleanly (the spec's hard requirement), Next.js compiles via SWC (no runtime impact), and the dev.log shows no compile errors.
+   197→   197→- Dashboard chart wrapping: I used plain recharts `<ResponsiveContainer>` + `<AreaChart>` / `<PieChart>` / `<BarChart>` directly (not the shadcn `ChartContainer`), because the shadcn `ChartContainer` injects an `aspect-video` wrapper class that doesn't fit a custom 220px/260px height. Custom Tooltip contentStyle with dark backdrop + fuchsia border matches the app theme.
+   198→   198→- Count-up for the "Toplam Süre" KPI animates the second count and formats as "Xm Ys" (Turkish abbreviations dakika->d, saniye->s).
+   199→   199→- SceneEditor: dirty detection uses JSON.stringify comparison of localScenes vs originalScenes — simple and reliable for this dataset size (≤ ~10 scenes). On save, server re-indexes scenes and auto-rebuilds SRT subtitles per the new PATCH contract; we trust the server's returned `project` as the new source of truth.
+   200→   200→- "Sahne Ekle" creates a new blank text scene with `id: scene-${Date.now()}-${idx}` — server re-indexes and assigns canonical ids on save.
+   201→   201→- Duplicate behavior: detail-view's Kopyala navigates to the new project's detail if it has scenes; projects-view's Kopyala stays on the projects list (refreshed) unless the copy has scenes (then navigates to detail). Both toast "Proje kopyalandı".
+   202→   202→- SidebarStatsBadge fetches listProjects once on mount; doesn't auto-refresh on project create/delete (acceptable for a mini-badge — would re-fetch when sidebar remounts).
+   203→   203→- agent-browser verified dashboard renders correctly, scene editor opens with all controls, projects view shows Kopyala button + search + sort + view toggle. Two screenshots saved at /tmp/dashboard.png and /tmp/scene-editor.png.
+   204→   204→- Lint: 0 errors, 0 warnings. Dev server: GET / 200. No compile errors. All deliverables met.
+   205→   205→
+   206→   206→---
+   207→   207→Task ID: 5
+   208→   208→Agent: Main (Z.ai Code) — cron-triggered review (Europe/Istanbul 04:14)
+   209→   209→Task: QA assessment, bug fixes, new features (Dashboard + Scene Editor + Duplicate), styling enhancements
+   210→   210→
+   211→   211→## Current Project Status Assessment
+   212→   212→- App was fully functional end-to-end before this round (verified in Task 4).
+   213→   213→- QA via agent-browser confirmed: all 6 views render, player plays audio (wav), no console errors, sticky footer, dark mode.
+   214→   214→- No blocking bugs found. Stable phase → proceeded to add features + styling polish.
+   215→   215→
+   216→   216→## Completed Modifications
+   217→   217→
+   218→   218→### New Backend APIs (3)
+   219→   219→1. `GET /api/stats` — aggregate statistics: totals (total/ready/generating/draft/error/durationSec/scenes), 8 distributions (mode/language/tone/style/status/aspectRatio/llmProvider/ttsProvider), 14-day daily activity. Returns enriched labels + flags + emojis.
+   220→   220→2. `POST /api/projects/[id]/duplicate` — clones project (title + " (kopya)", status "draft", scenes preserved, outputs cleared).
+   221→   221→3. `PATCH /api/projects/[id]` — update title/tone/style/scenes. When scenes provided: re-indexes, validates durationMs (1500-15000ms), and **auto-rebuilds SRT subtitles** via buildSRT.
+   222→   222→
+   223→   223→### New Frontend Features (dispatched to frontend-styling-expert subagent, Task 5-fe)
+   224→   224→1. **Dashboard view** (`src/components/views/dashboard-view.tsx`) — showpiece:
+   225→   225→   - 4 KPI cards (Toplam Video / Hazır / Toplam Süre / Toplam Sahne) with count-up animation, glassmorphism.
+   226→   226→   - 14-day activity AreaChart (recharts, violet→fuchsia gradient).
+   227→   227→   - Mode distribution donut PieChart + Language horizontal BarChart.
+   228→   228→   - LLM/TTS provider usage cards with progress bars.
+   229→   229→   - Recent projects mini-list.
+   230→   230→   - Empty state CTA.
+   231→   231→   - Verified: 3 recharts SVGs render, heading "Panel".
+   232→   232→2. **Scene Editor** (in `detail-view.tsx`) — power feature:
+   233→   233→   - "Sahne Düzenle" toggle. Per-scene card: type select, animation select, title/text/narration/subtitle inputs, imagePrompt + "Görseli Yeniden Üret" button, durationMs slider (1.5-15s), accent color swatches (8 presets + custom).
+   234→   234→   - Add/delete scene, live preview, dirty tracking, save (PATCH → subtitles rebuilt) / cancel (confirm).
+   235→   235→   - Verified: PATCH updates scenes + rebuilds SRT (subtitle line1 reflects edited text).
+   236→   236→3. **Duplicate (Kopyala)** — in projects-view (per card) + detail-view (action bar). Verified: clones project, toast "Proje kopyalandı", navigates to new detail.
+   237→   237→
+   238→   238→### Styling Enhancements (mandatory)
+   239→   239→- `globals.css`: `mesh-bg`, `pulse-glow`, `shimmer-border`, `gradient-border`, `glass`, `glass-strong`, `card-glow`, `text-gradient`, `hf-range` (custom slider), enhanced scrollbar.
+   240→   240→- Home: mesh-bg hero, floating gradient circles, 5 KPI pills (12 Dil etc.), "Nasıl Çalışır?" 3-step section.
+   241→   241→- Projects: search input, sort dropdown (newest/oldest/duration/title), grid/list toggle, glass + card-glow cards.
+   242→   242→- Detail: gradient player ring, meta icons (Globe/AudioLines/Palette/Clock/Layers), action icons.
+   243→   243→- Create: connected progress bar with pulsing current step, glass config section cards with icons, receipt-styled summary.
+   244→   244→- Templates: taller gradient banners, slide-up CTA on hover.
+   245→   245→- Settings: provider emoji tiles, gradient ring on enabled, pulse-glow on Z.ai builtin.
+   246→   246→- Sidebar: live project count badge, nav micro-animations.
+   247→   247→
+   248→   248→### API client additions (`src/lib/api-client.ts`)
+   249→   249→- `getStats()`, `duplicateProject(id)`, `updateProject(id, patch)`, `StatsData` interface.
+   250→   250→### Store addition (`src/lib/store.ts`)
+   251→   251→- `"dashboard"` added to `ViewName` union.
+   252→   252→
+   253→   253→## Verification Results
+   254→   254→- `bun run lint` → 0 errors.
+   255→   255→- Dev server: GET / 200, /api/stats 200, /api/projects 200.
+   256→   256→- agent-browser: Dashboard renders (KPI cards + 3 charts + provider cards + recent list). Scene Editor renders (per-scene controls). Duplicate works (project cloned, toast, navigation). Home "Nasıl Çalışır?" + KPI pills present. Projects search/sort/toggle present.
+   257→   257→- Scene PATCH verified via Python: scenes updated + subtitles rebuilt correctly.
+   258→   258→- All screenshots saved to /tmp/verify-*.png.
+   259→   259→
+   260→   260→## Unresolved Issues / Risks
+   261→   261→- None blocking. All features functional.
+   262→   262→- Scene editor "Görseli Yeniden Üret" calls /api/generate/image (takes ~15-20s per image) — could add inline loading state per scene (already has a spinner per the subagent, but worth verifying UX).
+   263→   263→- Dashboard charts are minimal when only 1 project exists (expected — more projects = richer charts).
+   264→   264→
+   265→   265→## Priority Recommendations for Next Phase
+   266→   266→1. **MP4 export** via Playwright frame capture + ffmpeg mini-service (highest impact — turns animated player into downloadable video file).
+   267→   267→2. **Real external provider integration** — wire OpenAI/Claude/Gemini LLM + ElevenLabs/OpenAI TTS when user supplies API keys (currently UI-configurable but routes through Z.ai engine).
+   268→   268→3. **Share/Embed** — public shareable link + embed code + QR code per project.
+   269→   269→4. **Streaming progress** — per-scene progress during generation (currently 4-step aggregate).
+   270→   270→5. **Bulk actions** in projects view (multi-select delete/duplicate/export).
+   271→   271→

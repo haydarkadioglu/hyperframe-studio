@@ -186,9 +186,10 @@ export function DashboardView() {
       </motion.div>
 
       {/* Activity chart */}
-      <Card className="glass">
+      <Card className="glass relative overflow-hidden">
+        <div className="orb orb-sm bg-violet-500/15 -top-10 -right-10" />
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative">
             <div>
               <CardTitle className="text-base">Son 14 Gün Aktivite</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
@@ -271,26 +272,28 @@ export function DashboardView() {
 
       {/* Distribution charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="glass">
-          <CardHeader>
+        <Card className="glass relative overflow-hidden">
+          <div className="orb orb-sm bg-fuchsia-500/15 -bottom-12 -left-10" />
+          <CardHeader className="relative">
             <CardTitle className="text-base">Mod Dağılımı</CardTitle>
             <p className="text-xs text-muted-foreground">
               Hangi üretim modunu ne kadar kullandın
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             <DistributionPie data={stats?.distributions.byMode ?? []} />
           </CardContent>
         </Card>
 
-        <Card className="glass">
-          <CardHeader>
+        <Card className="glass relative overflow-hidden">
+          <div className="orb orb-sm bg-pink-500/15 -top-10 -left-10" />
+          <CardHeader className="relative">
             <CardTitle className="text-base">Dil Dağılımı</CardTitle>
             <p className="text-xs text-muted-foreground">
               Videoların dil kırılımı
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             <LanguageBar data={stats?.distributions.byLanguage ?? []} />
           </CardContent>
         </Card>
@@ -406,13 +409,13 @@ export function DashboardView() {
 function Header() {
   return (
     <header className="relative overflow-hidden">
-      <div className="absolute -top-24 -right-24 size-72 rounded-full bg-fuchsia-500/15 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 size-72 rounded-full bg-violet-500/15 blur-3xl pointer-events-none" />
+      <div className="orb orb-md bg-violet-500/20 -top-20 -right-12" />
+      <div className="orb orb-sm bg-fuchsia-500/15 -bottom-16 -left-10" />
       <div className="relative">
         <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
           Genel bakış
         </p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
+        <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
           Panel
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -470,16 +473,18 @@ function KpiCard({
 
   return (
     <motion.div variants={item}>
-      <Card className="glass card-glow h-full overflow-hidden group">
+      <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group">
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div
               className={cn(
-                "grid size-11 place-items-center rounded-xl bg-gradient-to-br text-white shadow-md",
+                "relative grid size-11 place-items-center rounded-xl bg-gradient-to-br text-white shadow-md",
                 gradient
               )}
             >
               <Icon className="size-5" />
+              {/* Rotating gradient ring on hover */}
+              <span className="absolute -inset-1 rounded-xl ring-1 ring-fuchsia-500/30 opacity-0 group-hover:opacity-100 group-hover:rotate-45 transition-all duration-500 pointer-events-none" />
             </div>
             <ArrowRight className="size-4 text-muted-foreground/40 group-hover:text-fuchsia-500 group-hover:translate-x-0.5 transition-all" />
           </div>

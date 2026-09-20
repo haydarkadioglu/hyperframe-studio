@@ -140,7 +140,7 @@ export function SettingsView() {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 min-h-[44px]"
+          className="btn-gradient shine-on-hover border-0 min-h-[44px] relative overflow-hidden"
         >
           {saving ? (
             <Loader2 className="size-4 animate-spin" />
@@ -311,11 +311,18 @@ function ProviderCard({
   return (
     <Card
       className={cn(
-        "glass card-glow overflow-hidden relative",
+        "glass card-glow shine-on-hover card-hover-lift overflow-hidden relative",
         enabled ? "border-fuchsia-500/30" : "",
         isBuiltIn && "pulse-glow"
       )}
     >
+      {/* Left vertical animated gradient border for enabled providers */}
+      {enabled && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:100%_200%]"
+        />
+      )}
       <div
         className={cn(
           "h-1 w-full",
@@ -324,20 +331,32 @@ function ProviderCard({
             : "bg-gradient-to-r from-violet-500 to-fuchsia-500"
         )}
       />
-      <CardHeader>
+      <CardHeader className="pl-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
             <span
               className={cn(
-                "grid size-11 place-items-center rounded-xl text-2xl shadow-md shrink-0",
+                "relative grid size-12 place-items-center rounded-xl text-2xl shadow-md shrink-0",
                 isBuiltIn
-                  ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/30"
+                  ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20"
                   : enabled
-                  ? "bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 ring-1 ring-fuchsia-500/30"
+                  ? "bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20"
                   : "bg-muted"
               )}
             >
               {emoji}
+              {/* gradient ring on enabled */}
+              {enabled && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -inset-0.5 rounded-xl ring-1 pointer-events-none",
+                    isBuiltIn
+                      ? "ring-emerald-500/40"
+                      : "ring-fuchsia-500/40"
+                  )}
+                />
+              )}
             </span>
             <div className="min-w-0">
               <CardTitle className="text-base flex items-center gap-2 flex-wrap">
@@ -355,7 +374,7 @@ function ProviderCard({
           <Switch checked={enabled} onCheckedChange={(v) => onChange({ enabled: v })} />
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pl-6">
         {isBuiltIn ? (
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2.5 text-xs text-emerald-300 flex items-center gap-2">
             <CheckCircle2 className="size-4" />

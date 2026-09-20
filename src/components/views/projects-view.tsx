@@ -14,6 +14,8 @@ import {
   LayoutGrid,
   List as ListIcon,
   ArrowUpDown,
+  Share2,
+  Clapperboard,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { MODE_MAP, STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
@@ -57,6 +59,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ShareDialog } from "@/components/app/share-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +89,7 @@ export function ProjectsView() {
   const [sort, setSort] = React.useState<SortKey>("newest");
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
+  const [shareProject, setShareProject] = React.useState<VideoProject | null>(null);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -167,28 +171,32 @@ export function ProjectsView() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
-            Kütüphanen
-          </p>
-          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
-            Projelerim
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Oluşturduğun tüm videolar burada.
-          </p>
+      <header className="relative overflow-hidden">
+        {/* Decorative orb behind heading */}
+        <div className="orb orb-sm bg-fuchsia-500/30 -top-8 right-4 pointer-events-none" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
+              Kütüphanen
+            </p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
+              Projelerim
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Oluşturduğun tüm videolar burada.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setWizard({ step: 0 });
+              go("create");
+            }}
+            className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
+          >
+            <Wand2 className="size-4" />
+            Yeni Video
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            setWizard({ step: 0 });
-            go("create");
-          }}
-          className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 min-h-[44px]"
-        >
-          <Wand2 className="size-4" />
-          Yeni Video
-        </Button>
       </header>
 
       {/* Search + sort + view toggle */}
@@ -281,16 +289,20 @@ export function ProjectsView() {
               </div>
             )
           ) : filtered.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="py-12 flex flex-col items-center text-center gap-3">
-                <div className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
-                  <FolderOpen className="size-6" />
+            <Card className="border-dashed relative overflow-hidden">
+              <CardContent className="relative py-14 flex flex-col items-center text-center gap-4">
+                {/* Floating orbs */}
+                <div className="orb orb-sm bg-violet-500/30 -top-6 -left-6" />
+                <div className="orb orb-sm bg-fuchsia-500/25 -bottom-8 -right-6" />
+                <div className="orb orb-sm bg-pink-500/20 top-1/3 left-1/2" />
+                <div className="relative grid size-24 place-items-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-2xl shadow-fuchsia-500/30 pulse-glow">
+                  <Clapperboard className="size-10" />
                 </div>
-                <div>
-                  <p className="font-medium">
+                <div className="relative">
+                  <p className="font-semibold text-lg">
                     {search ? "Sonuç bulunamadı" : "Burada henüz proje yok"}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-1 max-w-md">
                     {search
                       ? "Aramanı değiştir ya da yeni bir video üret."
                       : "Filtreyi değiştir ya da yeni bir video üret."}
@@ -301,7 +313,7 @@ export function ProjectsView() {
                     setWizard({ step: 0 });
                     go("create");
                   }}
-                  className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0"
+                  className="relative btn-gradient shine-on-hover border-0 min-h-[44px]"
                 >
                   <Wand2 className="size-4" />
                   Yeni Video
@@ -318,6 +330,7 @@ export function ProjectsView() {
                   onOpen={() => go("detail", p.id)}
                   onDelete={() => setPendingDelete(p)}
                   onDuplicate={() => handleDuplicate(p)}
+                  onShare={() => setShareProject(p)}
                   duplicating={duplicatingId === p.id}
                 />
               ))}
@@ -332,6 +345,7 @@ export function ProjectsView() {
                   onOpen={() => go("detail", p.id)}
                   onDelete={() => setPendingDelete(p)}
                   onDuplicate={() => handleDuplicate(p)}
+                  onShare={() => setShareProject(p)}
                   duplicating={duplicatingId === p.id}
                 />
               ))}
@@ -374,6 +388,15 @@ export function ProjectsView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Share dialog (controlled) */}
+      {shareProject && (
+        <ShareDialog
+          project={shareProject}
+          open={Boolean(shareProject)}
+          onOpenChange={(o) => !o && setShareProject(null)}
+        />
+      )}
     </div>
   );
 }
@@ -424,6 +447,7 @@ function ProjectCard({
   onOpen,
   onDelete,
   onDuplicate,
+  onShare,
   duplicating,
 }: {
   project: VideoProject;
@@ -431,6 +455,7 @@ function ProjectCard({
   onOpen: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onShare: () => void;
   duplicating: boolean;
 }) {
   const modeInfo = MODE_MAP[project.mode];
@@ -443,7 +468,7 @@ function ProjectCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
     >
-      <Card className="glass card-glow overflow-hidden h-full group hover:border-fuchsia-500/40">
+      <Card className="glass card-glow shine-on-hover card-hover-lift overflow-hidden h-full group relative hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30">
         <button onClick={onOpen} className="block w-full text-left relative">
           <div className="relative aspect-video overflow-hidden bg-muted">
             <ProjectThumbnail
@@ -451,27 +476,28 @@ function ProjectCard({
               className="transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20 opacity-80 group-hover:opacity-100 transition-opacity" />
-            {/* gradient overlay on hover */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-tr from-fuchsia-500/10 via-transparent to-violet-500/10" />
+            {/* gradient overlay on hover (intensifies) */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-tr from-fuchsia-500/20 via-transparent to-violet-500/20" />
 
-            {/* Play overlay */}
+            {/* Play overlay (scales in) */}
             <div className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
               <motion.div
-                initial={{ scale: 0.6 }}
-                whileHover={{ scale: 1 }}
-                className="size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl"
+                initial={{ scale: 0.4 }}
+                whileHover={{ scale: 1.1 }}
+                className="size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl group-hover:animate-pulse"
               >
                 <Play className="size-6 text-white fill-white translate-x-0.5" />
               </motion.div>
             </div>
 
-            {/* Status badge */}
+            {/* Status badge — generating pulses */}
             <div className="absolute top-2 left-2">
               <Badge
                 variant="outline"
                 className={cn(
                   "backdrop-blur-md bg-black/40 border-0 text-white",
-                  status.cls
+                  status.cls,
+                  project.status === "generating" && "pulse-glow"
                 )}
               >
                 <span className={cn("size-1.5 rounded-full", status.dot)} />
@@ -519,6 +545,16 @@ function ProjectCard({
             <Button
               size="icon"
               variant="ghost"
+              onClick={onShare}
+              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+              aria-label="Paylaş"
+              title="Paylaş"
+            >
+              <Share2 className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
               onClick={onDuplicate}
               disabled={duplicating}
               className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
@@ -553,6 +589,7 @@ function ProjectRow({
   onOpen,
   onDelete,
   onDuplicate,
+  onShare,
   duplicating,
 }: {
   project: VideoProject;
@@ -560,6 +597,7 @@ function ProjectRow({
   onOpen: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onShare: () => void;
   duplicating: boolean;
 }) {
   const modeInfo = MODE_MAP[project.mode];
@@ -572,8 +610,13 @@ function ProjectRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.25) }}
     >
-      <Card className="glass card-glow group hover:border-fuchsia-500/40">
-        <CardContent className="py-3 flex items-center gap-4">
+      <Card className="glass card-glow group hover:border-fuchsia-500/40 relative overflow-hidden">
+        {/* Left gradient accent bar that appears on hover */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"
+        />
+        <CardContent className="py-3 flex items-center gap-4 pl-5">
           <button
             onClick={onOpen}
             className="relative shrink-0 size-20 rounded-lg overflow-hidden bg-muted group/thumb"
@@ -591,7 +634,11 @@ function ProjectRow({
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <Badge
                 variant="outline"
-                className={cn("text-[10px] border", status.cls)}
+                className={cn(
+                  "text-[10px] border",
+                  status.cls,
+                  project.status === "generating" && "pulse-glow"
+                )}
               >
                 <span className={cn("size-1.5 rounded-full", status.dot)} />
                 {status.label}
@@ -620,6 +667,16 @@ function ProjectRow({
               className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
             >
               Aç
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onShare}
+              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+              aria-label="Paylaş"
+              title="Paylaş"
+            >
+              <Share2 className="size-4" />
             </Button>
             <Button
               size="icon"

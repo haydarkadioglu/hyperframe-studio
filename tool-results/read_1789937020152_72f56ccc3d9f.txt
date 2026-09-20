@@ -1,0 +1,1240 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { motion } from "framer-motion";
+     5→import {
+     6→  ArrowLeft,
+     7→  RefreshCw,
+     8→  Trash2,
+     9→  Download,
+    10→  FileText,
+    11→  Loader2,
+    12→  AlertCircle,
+    13→  AudioLines,
+    14→  Play,
+    15→  Clapperboard,
+    16→  Globe,
+    17→  Palette,
+    18→  Clock,
+    19→  Layers,
+    20→  Captions,
+    21→  Copy,
+    22→  PencilLine,
+    23→  Plus,
+    24→  X,
+    25→  Save,
+    26→  Image as ImageIcon,
+    27→} from "lucide-react";
+    28→import { useApp } from "@/lib/store";
+    29→import {
+    30→  MODE_MAP,
+    31→  STYLE_MAP,
+    32→  LANGUAGE_MAP,
+    33→  TONE_MAP,
+    34→} from "@/lib/providers";
+    35→import {
+    36→  getProject,
+    37→  deleteProject,
+    38→  renderProject,
+    39→  downloadTextFile,
+    40→  downloadRemoteFile,
+    41→  formatDuration,
+    42→  timeAgo,
+    43→  duplicateProject,
+    44→  updateProject,
+    45→  generateImage,
+    46→  type ApiError,
+    47→} from "@/lib/api-client";
+    48→import type { VideoProject, Scene, SceneType, SceneAnimation } from "@/lib/types";
+    49→import { ScenePlayer } from "@/components/player/scene-player";
+    50→import { SceneThumbnail } from "@/components/player/scene-thumbnail";
+    51→import { Button } from "@/components/ui/button";
+    52→import { Badge } from "@/components/ui/badge";
+    53→import { Skeleton } from "@/components/ui/skeleton";
+    54→import { Input } from "@/components/ui/input";
+    55→import { Textarea } from "@/components/ui/textarea";
+    56→import { Label } from "@/components/ui/label";
+    57→import { Slider } from "@/components/ui/slider";
+    58→import {
+    59→  Card,
+    60→  CardContent,
+    61→  CardHeader,
+    62→  CardTitle,
+    63→  CardDescription,
+    64→} from "@/components/ui/card";
+    65→import {
+    66→  Select,
+    67→  SelectTrigger,
+    68→  SelectValue,
+    69→  SelectContent,
+    70→  SelectItem,
+    71→} from "@/components/ui/select";
+    72→import {
+    73→  AlertDialog,
+    74→  AlertDialogAction,
+    75→  AlertDialogCancel,
+    76→  AlertDialogContent,
+    77→  AlertDialogDescription,
+    78→  AlertDialogFooter,
+    79→  AlertDialogHeader,
+    80→  AlertDialogTitle,
+    81→} from "@/components/ui/alert-dialog";
+    82→import { toast } from "sonner";
+    83→import { cn } from "@/lib/utils";
+    84→
+    85→const SCENE_TYPES: { id: SceneType; label: string }[] = [
+    86→  { id: "title", label: "Başlık" },
+    87→  { id: "text", label: "Metin" },
+    88→  { id: "image", label: "Görsel" },
+    89→  { id: "quote", label: "Alıntı" },
+    90→  { id: "stats", label: "İstatistik" },
+    91→  { id: "cta", label: "Çağrı (CTA)" },
+    92→];
+    93→
+    94→const SCENE_ANIMATIONS: { id: SceneAnimation; label: string }[] = [
+    95→  { id: "fade", label: "Fade" },
+    96→  { id: "slide-up", label: "Yukarı kay" },
+    97→  { id: "slide-left", label: "Sola kay" },
+    98→  { id: "zoom", label: "Zoom" },
+    99→  { id: "bounce", label: "Zıpla" },
+   100→  { id: "flip", label: "Çevir" },
+   101→  { id: "ken-burns", label: "Ken Burns" },
+   102→];
+   103→
+   104→const ACCENT_PRESETS = [
+   105→  "#7c3aed",
+   106→  "#d946ef",
+   107→  "#ec4899",
+   108→  "#f59e0b",
+   109→  "#10b981",
+   110→  "#06b6d4",
+   111→  "#f43f5e",
+   112→  "#64748b",
+   113→];
+   114→
+   115→export function DetailView() {
+   116→  const detailId = useApp((s) => s.detailId);
+   117→  const go = useApp((s) => s.go);
+   118→  const [project, setProject] = React.useState<VideoProject | null>(null);
+   119→  const [loading, setLoading] = React.useState(true);
+   120→  const [error, setError] = React.useState<string | null>(null);
+   121→  const [pendingDelete, setPendingDelete] = React.useState(false);
+   122→  const [rerendering, setRerendering] = React.useState(false);
+   123→  const [duplicating, setDuplicating] = React.useState(false);
+   124→  const [editMode, setEditMode] = React.useState(false);
+   125→
+   126→  // Poll when generating
+   127→  React.useEffect(() => {
+   128→    if (!detailId) {
+   129→      setLoading(false);
+   130→      return;
+   131→    }
+   132→    let alive = true;
+   133→    let timer: ReturnType<typeof setTimeout> | null = null;
+   134→
+   135→    const fetchOnce = async () => {
+   136→      try {
+   137→        const p = await getProject(detailId);
+   138→        if (!alive) return;
+   139→        setProject(p);
+   140→        setError(null);
+   141→        if (p.status === "generating") {
+   142→          timer = setTimeout(fetchOnce, 2500);
+   143→        }
+   144→      } catch (e: any) {
+   145→        if (!alive) return;
+   146→        setError(e?.message || "Proje yüklenemedi");
+   147→      } finally {
+   148→        if (alive) setLoading(false);
+   149→      }
+   150→    };
+   151→
+   152→    setLoading(true);
+   153→    fetchOnce();
+   154→
+   155→    return () => {
+   156→      alive = false;
+   157→      if (timer) clearTimeout(timer);
+   158→    };
+   159→  }, [detailId]);
+   160→
+   161→  const handleRerender = async () => {
+   162→    if (!project) return;
+   163→    setRerendering(true);
+   164→    try {
+   165→      await renderProject(project.id, {
+   166→        targetScenes: project.sceneCount || 5,
+   167→      });
+   168→      toast.success("Yeniden üretim başladı");
+   169→      setProject({ ...project, status: "generating" });
+   170→    } catch (e: any) {
+   171→      toast.error("Yeniden üretim başlatılamadı", { description: e?.message });
+   172→    } finally {
+   173→      setRerendering(false);
+   174→    }
+   175→  };
+   176→
+   177→  const handleDelete = async () => {
+   178→    if (!project) return;
+   179→    try {
+   180→      await deleteProject(project.id);
+   181→      toast.success("Proje silindi");
+   182→      go("projects");
+   183→    } catch (e: any) {
+   184→      toast.error("Silme hatası", { description: e?.message });
+   185→    }
+   186→  };
+   187→
+   188→  const handleDuplicate = async () => {
+   189→    if (!project) return;
+   190→    setDuplicating(true);
+   191→    try {
+   192→      const copy = await duplicateProject(project.id);
+   193→      toast.success("Proje kopyalandı", {
+   194→        description: "Yeni taslak oluşturuldu.",
+   195→      });
+   196→      if (copy.scenes && copy.scenes.length > 0) {
+   197→        go("detail", copy.id);
+   198→      } else {
+   199→        go("projects");
+   200→      }
+   201→    } catch (e: any) {
+   202→      toast.error("Kopyalama hatası", { description: e?.message });
+   203→    } finally {
+   204→      setDuplicating(false);
+   205→    }
+   206→  };
+   207→
+   208→  if (!detailId) {
+   209→    return (
+   210→      <Card className="border-dashed">
+   211→        <CardContent className="py-12 text-center text-muted-foreground">
+   212→          Geçersiz proje.
+   213→        </CardContent>
+   214→      </Card>
+   215→    );
+   216→  }
+   217→
+   218→  if (loading) {
+   219→    return (
+   220→      <div className="space-y-6">
+   221→        <Skeleton className="h-9 w-32" />
+   222→        <Skeleton className="h-8 w-2/3" />
+   223→        <Skeleton className="aspect-video w-full rounded-2xl" />
+   224→        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   225→          {Array.from({ length: 4 }).map((_, i) => (
+   226→            <Skeleton key={i} className="aspect-video rounded-lg" />
+   227→          ))}
+   228→        </div>
+   229→      </div>
+   230→    );
+   231→  }
+   232→
+   233→  if (error || !project) {
+   234→    return (
+   235→      <Card className="border-dashed border-rose-500/40">
+   236→        <CardContent className="py-12 text-center space-y-3">
+   237→          <AlertCircle className="size-8 text-rose-500 mx-auto" />
+   238→          <p className="font-medium">Proje yüklenemedi</p>
+   239→          <p className="text-sm text-muted-foreground">{error ?? "Bilinmeyen hata"}</p>
+   240→          <Button variant="outline" onClick={() => go("projects")}>
+   241→            <ArrowLeft className="size-4" />
+   242→            Projelere dön
+   243→          </Button>
+   244→        </CardContent>
+   245→      </Card>
+   246→    );
+   247→  }
+   248→
+   249→  return (
+   250→    <div className="space-y-6">
+   251→      {/* Top nav */}
+   252→      <div className="flex items-center justify-between gap-2">
+   253→        <Button
+   254→          variant="ghost"
+   255→          size="sm"
+   256→          onClick={() => go("projects")}
+   257→          className="min-h-[40px]"
+   258→        >
+   259→          <ArrowLeft className="size-4" />
+   260→          Projelere dön
+   261→        </Button>
+   262→        <div className="flex items-center gap-1 flex-wrap justify-end">
+   263→          {project.status === "ready" && (
+   264→            <Button
+   265→              variant={editMode ? "default" : "outline"}
+   266→              size="sm"
+   267→              onClick={() => setEditMode((v) => !v)}
+   268→              className={cn(
+   269→                "min-h-[40px]",
+   270→                editMode
+   271→                  ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0"
+   272→                  : ""
+   273→              )}
+   274→            >
+   275→              <PencilLine className="size-4" />
+   276→              {editMode ? "Düzenlemeyi Bitir" : "Sahne Düzenle"}
+   277→            </Button>
+   278→          )}
+   279→          <Button
+   280→            variant="outline"
+   281→            size="sm"
+   282→            onClick={handleDuplicate}
+   283→            disabled={duplicating}
+   284→            className="min-h-[40px]"
+   285→          >
+   286→            {duplicating ? (
+   287→              <Loader2 className="size-4 animate-spin" />
+   288→            ) : (
+   289→              <Copy className="size-4" />
+   290→            )}
+   291→            Kopyala
+   292→          </Button>
+   293→          <Button
+   294→            variant="outline"
+   295→            size="sm"
+   296→            onClick={handleRerender}
+   297→            disabled={rerendering || project.status === "generating"}
+   298→            className="min-h-[40px]"
+   299→          >
+   300→            {rerendering ? (
+   301→              <Loader2 className="size-4 animate-spin" />
+   302→            ) : (
+   303→              <RefreshCw className="size-4" />
+   304→            )}
+   305→            Yeniden Oluştur
+   306→          </Button>
+   307→          <Button
+   308→            variant="outline"
+   309→            size="sm"
+   310→            onClick={() => setPendingDelete(true)}
+   311→            className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 border-rose-500/30 min-h-[40px]"
+   312→          >
+   313→            <Trash2 className="size-4" />
+   314→            Sil
+   315→          </Button>
+   316→        </div>
+   317→      </div>
+   318→
+   319→      {/* Title + meta */}
+   320→      <div className="space-y-2">
+   321→        <div className="flex flex-wrap items-center gap-2">
+   322→          <Badge variant="outline" className="bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/30">
+   323→            {MODE_MAP[project.mode]?.emoji} {MODE_MAP[project.mode]?.label}
+   324→          </Badge>
+   325→          <StatusBadge status={project.status} />
+   326→          <span className="text-xs text-muted-foreground">
+   327→            {timeAgo(project.createdAt)}
+   328→          </span>
+   329→        </div>
+   330→        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   331→          {project.title}
+   332→        </h1>
+   333→        <p className="text-sm text-muted-foreground line-clamp-2">
+   334→          {project.topic}
+   335→        </p>
+   336→      </div>
+   337→
+   338→      {/* Body */}
+   339→      {project.status === "generating" ? (
+   340→        <GeneratingView project={project} />
+   341→      ) : project.status === "error" ? (
+   342→        <ErrorView
+   343→          message={project.errorMessage || "Bilinmeyen bir hata oluştu"}
+   344→          onRetry={handleRerender}
+   345→        />
+   346→      ) : editMode ? (
+   347→        <SceneEditor
+   348→          project={project}
+   349→          onSaved={(updated) => {
+   350→            setProject(updated);
+   351→            setEditMode(false);
+   352→          }}
+   353→          onCancel={() => setEditMode(false)}
+   354→        />
+   355→      ) : (
+   356→        <ReadyView project={project} />
+   357→      )}
+   358→
+   359→      <AlertDialog open={pendingDelete} onOpenChange={setPendingDelete}>
+   360→        <AlertDialogContent>
+   361→          <AlertDialogHeader>
+   362→            <AlertDialogTitle>Projeyi sil?</AlertDialogTitle>
+   363→            <AlertDialogDescription>
+   364→              <span className="font-medium text-foreground">“{project.title}”</span>{" "}
+   365→              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+   366→            </AlertDialogDescription>
+   367→          </AlertDialogHeader>
+   368→          <AlertDialogFooter>
+   369→            <AlertDialogCancel>İptal</AlertDialogCancel>
+   370→            <AlertDialogAction
+   371→              onClick={(e) => {
+   372→                e.preventDefault();
+   373→                handleDelete();
+   374→              }}
+   375→              className="bg-rose-500 hover:bg-rose-600 text-white"
+   376→            >
+   377→              Sil
+   378→            </AlertDialogAction>
+   379→          </AlertDialogFooter>
+   380→        </AlertDialogContent>
+   381→      </AlertDialog>
+   382→    </div>
+   383→  );
+   384→}
+   385→
+   386→function StatusBadge({ status }: { status: VideoProject["status"] }) {
+   387→  const map: Record<VideoProject["status"], string> = {
+   388→    draft: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+   389→    generating: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+   390→    ready: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+   391→    error: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+   392→  };
+   393→  const label: Record<VideoProject["status"], string> = {
+   394→    draft: "Taslak",
+   395→    generating: "Üretiliyor",
+   396→    ready: "Hazır",
+   397→    error: "Hata",
+   398→  };
+   399→  return (
+   400→    <Badge variant="outline" className={cn("border", map[status])}>
+   401→      {status === "generating" && (
+   402→        <Loader2 className="size-3 animate-spin" />
+   403→      )}
+   404→      {label[status]}
+   405→    </Badge>
+   406→  );
+   407→}
+   408→
+   409→function GeneratingView({ project }: { project: VideoProject }) {
+   410→  const steps = [
+   411→    { label: "Senaryo yazılıyor", icon: FileText },
+   412→    { label: "Görseller üretiliyor", icon: Palette },
+   413→    { label: "Seslendirme yapılıyor", icon: AudioLines },
+   414→    { label: "Altyazılar oluşturuluyor", icon: CaptionsIcon },
+   415→  ];
+   416→
+   417→  const [active, setActive] = React.useState(0);
+   418→  React.useEffect(() => {
+   419→    const t = setInterval(() => {
+   420→      setActive((a) => (a + 1) % steps.length);
+   421→    }, 2200);
+   422→    return () => clearInterval(t);
+   423→  }, []);
+   424→
+   425→  const styleInfo = STYLE_MAP[project.style];
+   426→
+   427→  return (
+   428→    <div className="space-y-6">
+   429→      <Card
+   430→        className={cn(
+   431→          "overflow-hidden border-fuchsia-500/30 bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-pink-500/10"
+   432→        )}
+   433→      >
+   434→        <CardContent className="py-10">
+   435→          <div className="max-w-xl mx-auto text-center">
+   436→            <div className="mx-auto mb-6 relative size-24">
+   437→              <div
+   438→                className={cn(
+   439→                  "absolute inset-0 rounded-full bg-gradient-to-br opacity-30 blur-2xl",
+   440→                  styleInfo?.gradient
+   441→                )}
+   442→              />
+   443→              <div className="relative grid place-items-center size-24 rounded-full bg-background border border-fuchsia-500/30 shadow-xl">
+   444→                <Loader2 className="size-9 text-fuchsia-500 animate-spin" />
+   445→              </div>
+   446→            </div>
+   447→            <h2 className="text-xl font-bold">Videonuz üretiliyor</h2>
+   448→            <p className="text-sm text-muted-foreground mt-1">
+   449→              Bu işlem birkaç dakika sürebilir. Sayfayı açık tutabilirsiniz —
+   450→              tamamlandığında otomatik oynatıcı açılır.
+   451→            </p>
+   452→
+   453→            <div className="mt-8 grid gap-2 text-left max-w-md mx-auto">
+   454→              {steps.map((s, i) => {
+   455→                const Icon = s.icon;
+   456→                const done = i < active;
+   457→                const isCurrent = i === active;
+   458→                return (
+   459→                  <motion.div
+   460→                    key={s.label}
+   461→                    initial={{ opacity: 0, x: -10 }}
+   462→                    animate={{ opacity: 1, x: 0 }}
+   463→                    transition={{ delay: i * 0.1 }}
+   464→                    className={cn(
+   465→                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+   466→                      isCurrent
+   467→                        ? "border-fuchsia-500/50 bg-fuchsia-500/5"
+   468→                        : done
+   469→                        ? "border-emerald-500/40 bg-emerald-500/5"
+   470→                        : "border-border bg-muted/40 opacity-60"
+   471→                    )}
+   472→                  >
+   473→                    <div
+   474→                      className={cn(
+   475→                        "grid size-8 place-items-center rounded-lg",
+   476→                        isCurrent
+   477→                          ? "bg-fuchsia-500/20 text-fuchsia-400"
+   478→                          : done
+   479→                          ? "bg-emerald-500/20 text-emerald-400"
+   480→                          : "bg-muted text-muted-foreground"
+   481→                      )}
+   482→                    >
+   483→                      {isCurrent ? (
+   484→                        <Loader2 className="size-4 animate-spin" />
+   485→                      ) : done ? (
+   486→                        <Check />
+   487→                      ) : (
+   488→                        <Icon className="size-4" />
+   489→                      )}
+   490→                    </div>
+   491→                    <span className="text-sm font-medium">{s.label}</span>
+   492→                  </motion.div>
+   493→                );
+   494→              })}
+   495→            </div>
+   496→          </div>
+   497→        </CardContent>
+   498→      </Card>
+   499→    </div>
+   500→  );
+   501→}
+   502→
+   503→function Check() {
+   504→  return (
+   505→    <svg
+   506→      xmlns="http://www.w3.org/2000/svg"
+   507→      width="16"
+   508→      height="16"
+   509→      viewBox="0 0 24 24"
+   510→      fill="none"
+   511→      stroke="currentColor"
+   512→      strokeWidth="3"
+   513→      strokeLinecap="round"
+   514→      strokeLinejoin="round"
+   515→    >
+   516→      <polyline points="20 6 9 17 4 12" />
+   517→    </svg>
+   518→  );
+   519→}
+   520→
+   521→function CaptionsIcon({ className }: { className?: string }) {
+   522→  return (
+   523→    <svg
+   524→      xmlns="http://www.w3.org/2000/svg"
+   525→      width="16"
+   526→      height="16"
+   527→      viewBox="0 0 24 24"
+   528→      fill="none"
+   529→      stroke="currentColor"
+   530→      strokeWidth="2"
+   531→      strokeLinecap="round"
+   532→      strokeLinejoin="round"
+   533→      className={className}
+   534→    >
+   535→      <rect x="2" y="5" width="20" height="14" rx="3" />
+   536→      <path d="M7 12h3M14 12h3M7 15h6" />
+   537→    </svg>
+   538→  );
+   539→}
+   540→
+   541→function ErrorView({
+   542→  message,
+   543→  onRetry,
+   544→}: {
+   545→  message: string;
+   546→  onRetry: () => void;
+   547→}) {
+   548→  return (
+   549→    <Card className="border-rose-500/40">
+   550→      <CardContent className="py-10 text-center space-y-4">
+   551→        <div className="mx-auto grid size-14 place-items-center rounded-full bg-rose-500/10 text-rose-500">
+   552→          <AlertCircle className="size-7" />
+   553→        </div>
+   554→        <div>
+   555→          <p className="font-semibold">Üretim başarısız oldu</p>
+   556→          <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+   557→            {message}
+   558→          </p>
+   559→        </div>
+   560→        <Button onClick={onRetry} className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0">
+   561→          <RefreshCw className="size-4" />
+   562→          Tekrar dene
+   563→        </Button>
+   564→      </CardContent>
+   565→    </Card>
+   566→  );
+   567→}
+   568→
+   569→function ReadyView({ project }: { project: VideoProject }) {
+   570→  const modeInfo = MODE_MAP[project.mode];
+   571→  const styleInfo = STYLE_MAP[project.style];
+   572→  const langInfo = LANGUAGE_MAP[project.language];
+   573→  const toneInfo = TONE_MAP[project.tone];
+   574→
+   575→  const [selectedScene, setSelectedScene] = React.useState(0);
+   576→
+   577→  const downloadSrt = () => {
+   578→    if (!project.subtitles) {
+   579→      toast.error("Altyazı bulunamadı");
+   580→      return;
+   581→    }
+   582→    downloadTextFile(`${slug(project.title)}.srt`, project.subtitles, "text/plain");
+   583→    toast.success("SRT indirildi");
+   584→  };
+   585→
+   586→  const downloadVtt = () => {
+   587→    if (!project.subtitles) {
+   588→      toast.error("Altyazı bulunamadı");
+   589→      return;
+   590→    }
+   591→    const vtt = "WEBVTT\n\n" + project.subtitles.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+   592→    downloadTextFile(`${slug(project.title)}.vtt`, vtt, "text/vtt");
+   593→    toast.success("VTT indirildi");
+   594→  };
+   595→
+   596→  const downloadAudio = () => {
+   597→    if (!project.audioUrl) {
+   598→      toast.error("Ses dosyası bulunamadı");
+   599→      return;
+   600→    }
+   601→    downloadRemoteFile(project.audioUrl, `${slug(project.title)}.mp3`);
+   602→    toast.success("Ses indirildi");
+   603→  };
+   604→
+   605→  return (
+   606→    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   607→      <div className="lg:col-span-2 space-y-4">
+   608→        {/* Player stage with gradient ring glow */}
+   609→        <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40">
+   610→          <div className="rounded-2xl overflow-hidden">
+   611→            <ScenePlayer project={project} />
+   612→          </div>
+   613→        </div>
+   614→
+   615→        {/* Action bar */}
+   616→        <div className="flex flex-wrap gap-2">
+   617→          <Button variant="outline" size="sm" onClick={downloadSrt} className="min-h-[40px]">
+   618→            <FileText className="size-4" />
+   619→            SRT İndir
+   620→          </Button>
+   621→          <Button variant="outline" size="sm" onClick={downloadVtt} className="min-h-[40px]">
+   622→            <Captions className="size-4" />
+   623→            VTT İndir
+   624→          </Button>
+   625→          <Button
+   626→            variant="outline"
+   627→            size="sm"
+   628→            onClick={downloadAudio}
+   629→            disabled={!project.audioUrl}
+   630→            className="min-h-[40px]"
+   631→          >
+   632→            <Download className="size-4" />
+   633→            Sesi İndir
+   634→          </Button>
+   635→        </div>
+   636→      </div>
+   637→
+   638→      {/* Right panel: scenes list + meta */}
+   639→      <div className="space-y-4">
+   640→        <Card>
+   641→          <CardHeader>
+   642→            <CardTitle className="text-base">Detaylar</CardTitle>
+   643→          </CardHeader>
+   644→          <CardContent className="space-y-3 text-sm">
+   645→            <Meta icon={Clapperboard} label="Mod" value={modeInfo?.label} />
+   646→            <Meta icon={Globe} label="Dil" value={`${langInfo?.flag} ${langInfo?.nativeName}`} />
+   647→            <Meta icon={AudioLines} label="Ton" value={`${toneInfo?.emoji} ${toneInfo?.label}`} />
+   648→            <Meta icon={Palette} label="Stil" value={styleInfo?.label} />
+   649→            <Meta icon={Clock} label="Süre" value={formatDuration(project.durationSec)} />
+   650→            <Meta icon={Layers} label="Sahne sayısı" value={String(project.sceneCount)} />
+   651→          </CardContent>
+   652→        </Card>
+   653→
+   654→        <Card>
+   655→          <CardHeader>
+   656→            <CardTitle className="text-base">Sahneler</CardTitle>
+   657→            <CardDescription>
+   658→              Tıklayarak o sahneye git
+   659→            </CardDescription>
+   660→          </CardHeader>
+   661→          <CardContent>
+   662→            <div className="grid grid-cols-2 gap-2 max-h-[480px] overflow-y-auto scrollbar-thin pr-1">
+   663→              {project.scenes.map((scene, i) => (
+   664→                <button
+   665→                  key={scene.id}
+   666→                  onClick={() => setSelectedScene(i)}
+   667→                  className={cn(
+   668→                    "text-left rounded-lg overflow-hidden border transition-all",
+   669→                    selectedScene === i
+   670→                      ? "border-fuchsia-500 ring-2 ring-fuchsia-500/30"
+   671→                      : "border-border hover:border-fuchsia-500/40"
+   672→                  )}
+   673→                >
+   674→                  <div className="relative">
+   675→                    <SceneThumbnail
+   676→                      scene={scene}
+   677→                      style={project.style}
+   678→                      aspect={project.aspectRatio}
+   679→                    />
+   680→                    <div className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+   681→                      {i + 1}
+   682→                    </div>
+   683→                    <div className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white tabular-nums">
+   684→                      {(scene.durationMs / 1000).toFixed(1)}s
+   685→                    </div>
+   686→                  </div>
+   687→                  <p className="p-2 text-[11px] text-muted-foreground line-clamp-2">
+   688→                    {scene.subtitle || scene.text}
+   689→                  </p>
+   690→                </button>
+   691→              ))}
+   692→            </div>
+   693→          </CardContent>
+   694→        </Card>
+   695→      </div>
+   696→    </div>
+   697→  );
+   698→}
+   699→
+   700→function Meta({
+   701→  icon: Icon,
+   702→  label,
+   703→  value,
+   704→}: {
+   705→  icon: React.ComponentType<{ className?: string }>;
+   706→  label: string;
+   707→  value?: string;
+   708→}) {
+   709→  if (!value) return null;
+   710→  return (
+   711→    <div className="flex items-center justify-between gap-3">
+   712→      <span className="flex items-center gap-2 text-muted-foreground">
+   713→        <Icon className="size-4" />
+   714→        {label}
+   715→      </span>
+   716→      <span className="font-medium text-right">{value}</span>
+   717→    </div>
+   718→  );
+   719→}
+   720→
+   721→function slug(s: string) {
+   722→  return (
+   723→    s
+   724→      .toLowerCase()
+   725→      .trim()
+   726→      .replace(/[^\w\s-]/g, "")
+   727→      .replace(/\s+/g, "-")
+   728→      .slice(0, 60) || "video"
+   729→  );
+   730→}
+   731→
+   732→// =========================================================
+   733→// SCENE EDITOR
+   734→// =========================================================
+   735→function SceneEditor({
+   736→  project,
+   737→  onSaved,
+   738→  onCancel,
+   739→}: {
+   740→  project: VideoProject;
+   741→  onSaved: (updated: VideoProject) => void;
+   742→  onCancel: () => void;
+   743→}) {
+   744→  const [localScenes, setLocalScenes] = React.useState<Scene[]>(() =>
+   745→    project.scenes.map((s) => ({ ...s }))
+   746→  );
+   747→  const [originalScenes] = React.useState<Scene[]>(() =>
+   748→    project.scenes.map((s) => ({ ...s }))
+   749→  );
+   750→  const [saving, setSaving] = React.useState(false);
+   751→  const [confirmCancel, setConfirmCancel] = React.useState(false);
+   752→  const [pendingDeleteIdx, setPendingDeleteIdx] = React.useState<number | null>(null);
+   753→
+   754→  const dirty = React.useMemo(
+   755→    () => JSON.stringify(localScenes) !== JSON.stringify(originalScenes),
+   756→    [localScenes, originalScenes]
+   757→  );
+   758→
+   759→  // Real-time project preview: build a synthetic project so player reflects edits
+   760→  const previewProject = React.useMemo<VideoProject>(
+   761→    () => ({ ...project, scenes: localScenes }),
+   762→    [project, localScenes]
+   763→  );
+   764→
+   765→  const updateScene = (idx: number, patch: Partial<Scene>) => {
+   766→    setLocalScenes((prev) =>
+   767→      prev.map((s, i) => (i === idx ? { ...s, ...patch } : s))
+   768→    );
+   769→  };
+   770→
+   771→  const handleAddScene = () => {
+   772→    const newIdx = localScenes.length;
+   773→    const newScene: Scene = {
+   774→      id: `scene-${Date.now()}-${newIdx}`,
+   775→      index: newIdx,
+   776→      type: "text",
+   777→      title: "",
+   778→      text: "Yeni sahne metni",
+   779→      narration: "Yeni sahne seslendirmesi.",
+   780→      subtitle: "Yeni sahne",
+   781→      durationMs: 4000,
+   782→      animation: "fade",
+   783→      accentColor: "#d946ef",
+   784→    };
+   785→    setLocalScenes((prev) => [...prev, newScene]);
+   786→    toast.success("Yeni sahne eklendi");
+   787→  };
+   788→
+   789→  const handleDeleteScene = (idx: number) => {
+   790→    setLocalScenes((prev) =>
+   791→      prev
+   792→        .filter((_, i) => i !== idx)
+   793→        .map((s, i) => ({ ...s, index: i }))
+   794→    );
+   795→    setPendingDeleteIdx(null);
+   796→    toast.success("Sahne silindi");
+   797→  };
+   798→
+   799→  const handleSave = async () => {
+   800→    setSaving(true);
+   801→    try {
+   802→      const updated = await updateProject(project.id, {
+   803→        scenes: localScenes,
+   804→      });
+   805→      toast.success("Sahnelar kaydedildi ve altyazılar güncellendi", {
+   806→        description: `${localScenes.length} sahne sunucuya gönderildi.`,
+   807→      });
+   808→      onSaved(updated);
+   809→    } catch (e: any) {
+   810→      toast.error("Kaydetme hatası", { description: e?.message });
+   811→    } finally {
+   812→      setSaving(false);
+   813→    }
+   814→  };
+   815→
+   816→  const handleCancel = () => {
+   817→    if (dirty) {
+   818→      setConfirmCancel(true);
+   819→    } else {
+   820→      onCancel();
+   821→    }
+   822→  };
+   823→
+   824→  return (
+   825→    <div className="space-y-5">
+   826→      {/* Live preview */}
+   827→      <Card className="glass border-fuchsia-500/30">
+   828→        <CardHeader>
+   829→          <div className="flex items-center justify-between">
+   830→            <div>
+   831→              <CardTitle className="text-base flex items-center gap-2">
+   832→                <PencilLine className="size-4 text-fuchsia-500" />
+   833→                Sahne Düzenleyici
+   834→              </CardTitle>
+   835→              <CardDescription>
+   836→                Değişiklikler canlı önizlemede görünür. Kaydedince altyazılar otomatik yeniden oluşturulur.
+   837→              </CardDescription>
+   838→            </div>
+   839→            {dirty && (
+   840→              <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30">
+   841→                Kaydedilmemiş değişiklik
+   842→              </Badge>
+   843→            )}
+   844→          </div>
+   845→        </CardHeader>
+   846→        <CardContent>
+   847→          <div className="rounded-2xl p-[1.5px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40">
+   848→            <div className="rounded-2xl overflow-hidden">
+   849→              <ScenePlayer project={previewProject} />
+   850→            </div>
+   851→          </div>
+   852→        </CardContent>
+   853→      </Card>
+   854→
+   855→      {/* Scene cards */}
+   856→      <div className="space-y-4">
+   857→        {localScenes.map((scene, idx) => (
+   858→          <SceneEditorCard
+   859→            key={scene.id}
+   860→            scene={scene}
+   861→            idx={idx}
+   862→            style={project.style}
+   863→            aspect={project.aspectRatio}
+   864→            projectId={project.id}
+   865→            onChange={(patch) => updateScene(idx, patch)}
+   866→            onDelete={() => setPendingDeleteIdx(idx)}
+   867→          />
+   868→        ))}
+   869→      </div>
+   870→
+   871→      {/* Add scene */}
+   872→      <Button
+   873→        variant="outline"
+   874→        onClick={handleAddScene}
+   875→        className="w-full min-h-[44px] border-dashed border-fuchsia-500/40 text-fuchsia-500 hover:bg-fuchsia-500/5 hover:text-fuchsia-400"
+   876→      >
+   877→        <Plus className="size-4" />
+   878→        Sahne Ekle
+   879→      </Button>
+   880→
+   881→      {/* Sticky action bar */}
+   882→      <div className="sticky bottom-4 z-30">
+   883→        <Card className="glass-strong border-fuchsia-500/30 shadow-xl shadow-fuchsia-500/10">
+   884→          <CardContent className="py-3 flex items-center justify-between gap-3">
+   885→            <div className="text-xs text-muted-foreground">
+   886→              <span className="font-medium text-foreground">{localScenes.length}</span> sahne ·
+   887→              {dirty ? " kaydedilmedi" : " kaydedildi"}
+   888→            </div>
+   889→            <div className="flex items-center gap-2">
+   890→              <Button
+   891→                variant="ghost"
+   892→                onClick={handleCancel}
+   893→                disabled={saving}
+   894→                className="min-h-[40px]"
+   895→              >
+   896→                <X className="size-4" />
+   897→                İptal
+   898→              </Button>
+   899→              <Button
+   900→                onClick={handleSave}
+   901→                disabled={saving || !dirty}
+   902→                className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[40px] min-w-[180px]"
+   903→              >
+   904→                {saving ? (
+   905→                  <Loader2 className="size-4 animate-spin" />
+   906→                ) : (
+   907→                  <Save className="size-4" />
+   908→                )}
+   909→                {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+   910→              </Button>
+   911→            </div>
+   912→          </CardContent>
+   913→        </Card>
+   914→      </div>
+   915→
+   916→      {/* Confirm delete scene */}
+   917→      <AlertDialog
+   918→        open={pendingDeleteIdx !== null}
+   919→        onOpenChange={(o) => !o && setPendingDeleteIdx(null)}
+   920→      >
+   921→        <AlertDialogContent>
+   922→          <AlertDialogHeader>
+   923→            <AlertDialogTitle>Sahneyi sil?</AlertDialogTitle>
+   924→            <AlertDialogDescription>
+   925→              <span className="font-medium text-foreground">
+   926→                {pendingDeleteIdx !== null ? `${pendingDeleteIdx + 1}. sahne` : "Sahne"}
+   927→              </span>{" "}
+   928→              silinecek. Kalan sahneler otomatik yeniden numaralandırılır.
+   929→            </AlertDialogDescription>
+   930→          </AlertDialogHeader>
+   931→          <AlertDialogFooter>
+   932→            <AlertDialogCancel>İptal</AlertDialogCancel>
+   933→            <AlertDialogAction
+   934→              onClick={(e) => {
+   935→                e.preventDefault();
+   936→                if (pendingDeleteIdx !== null) handleDeleteScene(pendingDeleteIdx);
+   937→              }}
+   938→              className="bg-rose-500 hover:bg-rose-600 text-white"
+   939→            >
+   940→              <Trash2 className="size-4" />
+   941→              Sil
+   942→            </AlertDialogAction>
+   943→          </AlertDialogFooter>
+   944→        </AlertDialogContent>
+   945→      </AlertDialog>
+   946→
+   947→      {/* Confirm cancel with unsaved */}
+   948→      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
+   949→        <AlertDialogContent>
+   950→          <AlertDialogHeader>
+   951→            <AlertDialogTitle>Kaydedilmemiş değişiklikler var</AlertDialogTitle>
+   952→            <AlertDialogDescription>
+   953→              Çıkarsan tüm düzenlemeler kaybolur. Devam edilsin mi?
+   954→            </AlertDialogDescription>
+   955→          </AlertDialogHeader>
+   956→          <AlertDialogFooter>
+   957→            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+   958→            <AlertDialogAction
+   959→              onClick={(e) => {
+   960→                e.preventDefault();
+   961→                setConfirmCancel(false);
+   962→                onCancel();
+   963→              }}
+   964→              className="bg-rose-500 hover:bg-rose-600 text-white"
+   965→            >
+   966→              Yine de çık
+   967→            </AlertDialogAction>
+   968→          </AlertDialogFooter>
+   969→        </AlertDialogContent>
+   970→      </AlertDialog>
+   971→    </div>
+   972→  );
+   973→}
+   974→
+   975→function SceneEditorCard({
+   976→  scene,
+   977→  idx,
+   978→  style,
+   979→  aspect,
+   980→  projectId,
+   981→  onChange,
+   982→  onDelete,
+   983→}: {
+   984→  scene: Scene;
+   985→  idx: number;
+   986→  style: VideoProject["style"];
+   987→  aspect: VideoProject["aspectRatio"];
+   988→  projectId: string;
+   989→  onChange: (patch: Partial<Scene>) => void;
+   990→  onDelete: () => void;
+   991→}) {
+   992→  const [regenerating, setRegenerating] = React.useState(false);
+   993→
+   994→  const handleRegenImage = async () => {
+   995→    if (!scene.imagePrompt?.trim()) {
+   996→      toast.error("Önce bir görsel promptu girin");
+   997→      return;
+   998→    }
+   999→    setRegenerating(true);
+  1000→    try {
+  1001→      const res = await generateImage({
+  1002→        prompt: scene.imagePrompt,
+  1003→        projectId,
+  1004→        sceneIdx: idx,
+  1005→      });
+  1006→      onChange({ imageUrl: res.imageUrl });
+  1007→      toast.success("Görsel yeniden üretildi");
+  1008→    } catch (e: any) {
+  1009→      toast.error("Görsel üretilemedi", { description: e?.message });
+  1010→    } finally {
+  1011→      setRegenerating(false);
+  1012→    }
+  1013→  };
+  1014→
+  1015→  return (
+  1016→    <motion.div
+  1017→      layout
+  1018→      initial={{ opacity: 0, y: 12 }}
+  1019→      animate={{ opacity: 1, y: 0 }}
+  1020→      transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.3) }}
+  1021→    >
+  1022→      <Card className="glass card-glow overflow-hidden">
+  1023→        <CardHeader className="pb-3">
+  1024→          <div className="flex items-center justify-between gap-3">
+  1025→            <div className="flex items-center gap-3 min-w-0">
+  1026→              <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-sm font-bold shadow-md shadow-fuchsia-500/30 shrink-0">
+  1027→                {idx + 1}
+  1028→              </span>
+  1029→              <div className="min-w-0">
+  1030→                <p className="text-sm font-semibold truncate">
+  1031→                  {scene.title || scene.subtitle || `Sahne ${idx + 1}`}
+  1032→                </p>
+  1033→                <p className="text-[11px] text-muted-foreground">
+  1034→                  {scene.type} · {scene.animation} · {(scene.durationMs / 1000).toFixed(1)}s
+  1035→                </p>
+  1036→              </div>
+  1037→            </div>
+  1038→            <Button
+  1039→              size="icon"
+  1040→              variant="ghost"
+  1041→              onClick={onDelete}
+  1042→              className="size-8 shrink-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+  1043→              aria-label="Sahneyi sil"
+  1044→            >
+  1045→              <Trash2 className="size-4" />
+  1046→            </Button>
+  1047→          </div>
+  1048→        </CardHeader>
+  1049→        <CardContent className="space-y-4">
+  1050→          {/* Live thumbnail + selects */}
+  1051→          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  1052→            <div className="md:col-span-1">
+  1053→              <Label className="text-xs text-muted-foreground">Önizleme</Label>
+  1054→              <div className="mt-1.5 rounded-lg overflow-hidden border border-border">
+  1055→                <SceneThumbnail scene={scene} style={style} aspect={aspect} />
+  1056→              </div>
+  1057→            </div>
+  1058→            <div className="md:col-span-2 grid grid-cols-2 gap-3">
+  1059→              <div className="space-y-1.5">
+  1060→                <Label className="text-xs">Tür</Label>
+  1061→                <Select
+  1062→                  value={scene.type}
+  1063→                  onValueChange={(v) => onChange({ type: v as SceneType })}
+  1064→                >
+  1065→                  <SelectTrigger className="w-full">
+  1066→                    <SelectValue />
+  1067→                  </SelectTrigger>
+  1068→                  <SelectContent>
+  1069→                    {SCENE_TYPES.map((t) => (
+  1070→                      <SelectItem key={t.id} value={t.id}>
+  1071→                        {t.label}
+  1072→                      </SelectItem>
+  1073→                    ))}
+  1074→                  </SelectContent>
+  1075→                </Select>
+  1076→              </div>
+  1077→              <div className="space-y-1.5">
+  1078→                <Label className="text-xs">Animasyon</Label>
+  1079→                <Select
+  1080→                  value={scene.animation}
+  1081→                  onValueChange={(v) => onChange({ animation: v as SceneAnimation })}
+  1082→                >
+  1083→                  <SelectTrigger className="w-full">
+  1084→                    <SelectValue />
+  1085→                  </SelectTrigger>
+  1086→                  <SelectContent>
+  1087→                    {SCENE_ANIMATIONS.map((a) => (
+  1088→                      <SelectItem key={a.id} value={a.id}>
+  1089→                        {a.label}
+  1090→                      </SelectItem>
+  1091→                    ))}
+  1092→                  </SelectContent>
+  1093→                </Select>
+  1094→              </div>
+  1095→            </div>
+  1096→          </div>
+  1097→
+  1098→          {/* Title */}
+  1099→          <div className="space-y-1.5">
+  1100→            <Label className="text-xs">Başlık (opsiyonel)</Label>
+  1101→            <Input
+  1102→              value={scene.title || ""}
+  1103→              onChange={(e) => onChange({ title: e.target.value })}
+  1104→              placeholder="Sahne başlığı"
+  1105→            />
+  1106→          </div>
+  1107→
+  1108→          {/* Text */}
+  1109→          <div className="space-y-1.5">
+  1110→            <Label className="text-xs">Ekranda görünen metin</Label>
+  1111→            <Textarea
+  1112→              value={scene.text}
+  1113→              onChange={(e) => onChange({ text: e.target.value })}
+  1114→              className="min-h-[60px]"
+  1115→            />
+  1116→          </div>
+  1117→
+  1118→          {/* Narration */}
+  1119→          <div className="space-y-1.5">
+  1120→            <Label className="text-xs flex items-center gap-1.5">
+  1121→              <AudioLines className="size-3" />
+  1122→              Seslendirme metni (TTS)
+  1123→            </Label>
+  1124→            <Textarea
+  1125→              value={scene.narration}
+  1126→              onChange={(e) => onChange({ narration: e.target.value })}
+  1127→              className="min-h-[60px]"
+  1128→            />
+  1129→          </div>
+  1130→
+  1131→          {/* Subtitle */}
+  1132→          <div className="space-y-1.5">
+  1133→            <Label className="text-xs">Altyazı satırı</Label>
+  1134→            <Input
+  1135→              value={scene.subtitle}
+  1136→              onChange={(e) => onChange({ subtitle: e.target.value })}
+  1137→              maxLength={100}
+  1138→            />
+  1139→          </div>
+  1140→
+  1141→          {/* Image prompt */}
+  1142→          <div className="space-y-1.5">
+  1143→            <Label className="text-xs flex items-center gap-1.5">
+  1144→              <ImageIcon className="size-3" />
+  1145→              Görsel promptu (İngilizce)
+  1146→            </Label>
+  1147→            <div className="flex gap-2">
+  1148→              <Input
+  1149→                value={scene.imagePrompt || ""}
+  1150→                onChange={(e) => onChange({ imagePrompt: e.target.value })}
+  1151→                placeholder="Örn: cinematic shot of a futuristic city at sunset"
+  1152→              />
+  1153→              <Button
+  1154→                variant="outline"
+  1155→                onClick={handleRegenImage}
+  1156→                disabled={regenerating}
+  1157→                className="shrink-0 border-fuchsia-500/40 text-fuchsia-500 hover:bg-fuchsia-500/10"
+  1158→              >
+  1159→                {regenerating ? (
+  1160→                  <Loader2 className="size-4 animate-spin" />
+  1161→                ) : (
+  1162→                  <RefreshCw className="size-4" />
+  1163→                )}
+  1164→                {regenerating ? "Üretiliyor..." : "Yeniden Üret"}
+  1165→              </Button>
+  1166→            </div>
+  1167→            {scene.imageUrl && (
+  1168→              <p className="text-[10px] text-emerald-500 flex items-center gap-1">
+  1169→                <span className="size-1.5 rounded-full bg-emerald-500" />
+  1170→                Görsel mevcut
+  1171→              </p>
+  1172→            )}
+  1173→          </div>
+  1174→
+  1175→          {/* Duration */}
+  1176→          <div className="space-y-2">
+  1177→            <div className="flex items-center justify-between">
+  1178→              <Label className="text-xs">Süre</Label>
+  1179→              <Badge variant="secondary" className="tabular-nums">
+  1180→                {(scene.durationMs / 1000).toFixed(1)}s
+  1181→              </Badge>
+  1182→            </div>
+  1183→            <Slider
+  1184→              min={1500}
+  1185→              max={15000}
+  1186→              step={500}
+  1187→              value={[scene.durationMs]}
+  1188→              onValueChange={(v) => onChange({ durationMs: v[0] })}
+  1189→            />
+  1190→            <div className="flex justify-between text-[10px] text-muted-foreground">
+  1191→              <span>1.5s</span>
+  1192→              <span>15s</span>
+  1193→            </div>
+  1194→          </div>
+  1195→
+  1196→          {/* Accent color */}
+  1197→          <div className="space-y-2">
+  1198→            <Label className="text-xs">Vurgu rengi</Label>
+  1199→            <div className="flex flex-wrap items-center gap-2">
+  1200→              {ACCENT_PRESETS.map((c) => (
+  1201→                <button
+  1202→                  key={c}
+  1203→                  onClick={() => onChange({ accentColor: c })}
+  1204→                  className={cn(
+  1205→                    "size-7 rounded-full transition-transform hover:scale-110",
+  1206→                    scene.accentColor === c
+  1207→                      ? "ring-2 ring-offset-2 ring-offset-background ring-fuchsia-500 scale-110"
+  1208→                      : "ring-1 ring-border"
+  1209→                  )}
+  1210→                  style={{ background: c }}
+  1211→                  aria-label={`Renk ${c}`}
+  1212→                />
+  1213→              ))}
+  1214→              <label className="relative size-7 rounded-full overflow-hidden cursor-pointer ring-1 ring-border">
+  1215→                <input
+  1216→                  type="color"
+  1217→                  value={scene.accentColor || "#d946ef"}
+  1218→                  onChange={(e) => onChange({ accentColor: e.target.value })}
+  1219→                  className="absolute inset-0 size-full cursor-pointer opacity-0"
+  1220→                  aria-label="Özel renk"
+  1221→                />
+  1222→                <span
+  1223→                  className="absolute inset-0"
+  1224→                  style={{
+  1225→                    background:
+  1226→                      "conic-gradient(from 0deg, #7c3aed, #d946ef, #ec4899, #f59e0b, #10b981, #06b6d4, #7c3aed)",
+  1227→                  }}
+  1228→                />
+  1229→                <span className="absolute inset-0 grid place-items-center text-white text-[10px] font-bold">
+  1230→                  +
+  1231→                </span>
+  1232→              </label>
+  1233→            </div>
+  1234→          </div>
+  1235→        </CardContent>
+  1236→      </Card>
+  1237→    </motion.div>
+  1238→  );
+  1239→}
+  1240→

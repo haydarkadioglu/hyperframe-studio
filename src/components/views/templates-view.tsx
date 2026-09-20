@@ -194,15 +194,17 @@ export function TemplatesView() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
+      <header className="relative overflow-hidden">
+        <div className="orb orb-sm bg-fuchsia-500/30 -top-6 right-4" />
+        <div className="orb orb-sm bg-violet-500/25 -bottom-8 -left-6" />
+        <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold relative">
           Hızlı başlangıç
         </p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 text-balance relative">
           <LayoutTemplate className="size-6 text-fuchsia-500" />
           Şablonlar
         </h1>
-        <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+        <p className="text-sm text-muted-foreground mt-1 max-w-2xl relative">
           Hazır kullanım senaryolarından birini seçin — ton, stil, dil ve mod
           otomatik ayarlanır. Sonrasında videonu üretmeye başlayın.
         </p>
@@ -228,14 +230,31 @@ export function TemplatesView() {
               onClick={() => applyTemplate(t)}
               className="text-left"
             >
-              <Card className="glass card-glow h-full overflow-hidden group hover:border-fuchsia-500/40 relative">
+              <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30 relative">
                 {/* Taller gradient banner with decorative pattern */}
                 <div className="relative aspect-[3/1.6] overflow-hidden">
                   <div
                     className={cn(
-                      "absolute inset-0 bg-gradient-to-br animated-gradient",
+                      "absolute inset-0 bg-gradient-to-br animated-gradient bg-[length:200%_200%]",
                       t.gradient
                     )}
+                  />
+                  {/* Decorative dots pattern */}
+                  <div
+                    className="absolute inset-0 opacity-30"
+                    style={{
+                      backgroundImage:
+                        "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)",
+                      backgroundSize: "12px 12px",
+                    }}
+                  />
+                  {/* Diagonal stripes overlay (subtle) */}
+                  <div
+                    className="absolute inset-0 opacity-15 mix-blend-overlay"
+                    style={{
+                      backgroundImage:
+                        "repeating-linear-gradient(45deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 8px)",
+                    }}
                   />
                   {/* decorative shapes */}
                   <div className="absolute -top-6 -right-6 size-24 rounded-full bg-white/10 blur-2xl" />
@@ -245,7 +264,7 @@ export function TemplatesView() {
                   <div className="absolute bottom-1/3 right-1/2 size-1.5 rounded-full bg-white/40" />
 
                   <div className="absolute inset-0 grid place-items-center">
-                    <span className="text-6xl drop-shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                    <span className="text-6xl drop-shadow-2xl group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500">
                       {t.emoji}
                     </span>
                   </div>
@@ -259,8 +278,9 @@ export function TemplatesView() {
                   )}
                   {/* Slide-up "Kullan" CTA on hover */}
                   <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <div className="rounded-lg bg-white/15 backdrop-blur-md border border-white/30 px-3 py-2 text-center text-sm font-semibold text-white shadow-lg">
-                      Kullan →
+                    <div className="rounded-lg btn-gradient px-3 py-2 text-center text-sm font-semibold text-white shadow-lg flex items-center justify-center gap-1.5">
+                      Kullan
+                      <ArrowRight className="size-3.5" />
                     </div>
                   </div>
                 </div>
@@ -310,7 +330,7 @@ export function TemplatesView() {
               setWizard({ step: 0 });
               go("create");
             }}
-            className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 min-h-[44px]"
+            className="btn-gradient shine-on-hover text-white border-0 min-h-[44px] relative overflow-hidden"
           >
             <Wand2 className="size-4" />
             Sıfırdan Başla

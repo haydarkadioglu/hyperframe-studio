@@ -24,6 +24,7 @@ import {
   X,
   Save,
   Image as ImageIcon,
+  Share2,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import {
@@ -79,6 +80,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ShareDialog } from "@/components/app/share-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +124,7 @@ export function DetailView() {
   const [rerendering, setRerendering] = React.useState(false);
   const [duplicating, setDuplicating] = React.useState(false);
   const [editMode, setEditMode] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
 
   // Poll when generating
   React.useEffect(() => {
@@ -266,7 +269,7 @@ export function DetailView() {
               size="sm"
               onClick={() => setEditMode((v) => !v)}
               className={cn(
-                "min-h-[40px]",
+                "min-h-[40px] card-hover-lift",
                 editMode
                   ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0"
                   : ""
@@ -281,7 +284,7 @@ export function DetailView() {
             size="sm"
             onClick={handleDuplicate}
             disabled={duplicating}
-            className="min-h-[40px]"
+            className="min-h-[40px] card-hover-lift"
           >
             {duplicating ? (
               <Loader2 className="size-4 animate-spin" />
@@ -291,11 +294,19 @@ export function DetailView() {
             Kopyala
           </Button>
           <Button
+            size="sm"
+            onClick={() => setShareOpen(true)}
+            className="min-h-[40px] btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 relative overflow-hidden"
+          >
+            <Share2 className="size-4" />
+            Paylaş
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={handleRerender}
             disabled={rerendering || project.status === "generating"}
-            className="min-h-[40px]"
+            className="min-h-[40px] card-hover-lift"
           >
             {rerendering ? (
               <Loader2 className="size-4 animate-spin" />
@@ -327,7 +338,7 @@ export function DetailView() {
             {timeAgo(project.createdAt)}
           </span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">
           {project.title}
         </h1>
         <p className="text-sm text-muted-foreground line-clamp-2">
@@ -353,7 +364,7 @@ export function DetailView() {
           onCancel={() => setEditMode(false)}
         />
       ) : (
-        <ReadyView project={project} />
+        <ReadyView project={project} onShare={() => setShareOpen(true)} />
       )}
 
       <AlertDialog open={pendingDelete} onOpenChange={setPendingDelete}>
@@ -379,6 +390,8 @@ export function DetailView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareDialog project={project} open={shareOpen} onOpenChange={setShareOpen} />
     </div>
   );
 }
@@ -397,7 +410,7 @@ function StatusBadge({ status }: { status: VideoProject["status"] }) {
     error: "Hata",
   };
   return (
-    <Badge variant="outline" className={cn("border", map[status])}>
+    <Badge variant="outline" className={cn("border", map[status], status === "generating" && "pulse-glow")}>
       {status === "generating" && (
         <Loader2 className="size-3 animate-spin" />
       )}
@@ -566,7 +579,7 @@ function ErrorView({
   );
 }
 
-function ReadyView({ project }: { project: VideoProject }) {
+function ReadyView({ project, onShare }: { project: VideoProject; onShare: () => void }) {
   const modeInfo = MODE_MAP[project.mode];
   const styleInfo = STYLE_MAP[project.style];
   const langInfo = LANGUAGE_MAP[project.language];
@@ -605,20 +618,27 @@ function ReadyView({ project }: { project: VideoProject }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
-        {/* Player stage with gradient ring glow */}
-        <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40">
-          <div className="rounded-2xl overflow-hidden">
-            <ScenePlayer project={project} />
+        {/* Player stage with rotating gradient ring + orb depth */}
+        <div className="relative">
+          {/* Decorative orb behind player */}
+          <div className="orb orb-md bg-violet-500/30 -top-10 -left-10 -z-10" />
+          <div className="orb orb-sm bg-fuchsia-500/25 -bottom-12 right-4 -z-10" />
+          {/* Gradient ring that subtly rotates on hover */}
+          <div className="group relative rounded-2xl p-[1.5px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40 overflow-hidden transition-shadow hover:shadow-[0_30px_60px_-30px_rgba(217,70,239,0.5)]">
+            <div className="absolute -inset-1 bg-gradient-to-r from-violet-500/30 via-fuchsia-500/20 to-pink-500/30 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity pointer-events-none" />
+            <div className="relative rounded-2xl overflow-hidden">
+              <ScenePlayer project={project} />
+            </div>
           </div>
         </div>
 
         {/* Action bar */}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={downloadSrt} className="min-h-[40px]">
+          <Button variant="outline" size="sm" onClick={downloadSrt} className="min-h-[40px] card-hover-lift">
             <FileText className="size-4" />
             SRT İndir
           </Button>
-          <Button variant="outline" size="sm" onClick={downloadVtt} className="min-h-[40px]">
+          <Button variant="outline" size="sm" onClick={downloadVtt} className="min-h-[40px] card-hover-lift">
             <Captions className="size-4" />
             VTT İndir
           </Button>
@@ -627,21 +647,30 @@ function ReadyView({ project }: { project: VideoProject }) {
             size="sm"
             onClick={downloadAudio}
             disabled={!project.audioUrl}
-            className="min-h-[40px]"
+            className="min-h-[40px] card-hover-lift"
           >
             <Download className="size-4" />
             Sesi İndir
+          </Button>
+          <Button
+            size="sm"
+            onClick={onShare}
+            className="min-h-[40px] btn-gradient shine-on-hover shadow-md shadow-fuchsia-500/30 relative overflow-hidden ml-auto"
+          >
+            <Share2 className="size-4" />
+            Paylaş
           </Button>
         </div>
       </div>
 
       {/* Right panel: scenes list + meta */}
       <div className="space-y-4">
-        <Card>
+        <Card className="glass overflow-hidden">
+          <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x" />
           <CardHeader>
             <CardTitle className="text-base">Detaylar</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-sm">
+          <CardContent className="space-y-2 text-sm">
             <Meta icon={Clapperboard} label="Mod" value={modeInfo?.label} />
             <Meta icon={Globe} label="Dil" value={`${langInfo?.flag} ${langInfo?.nativeName}`} />
             <Meta icon={AudioLines} label="Ton" value={`${toneInfo?.emoji} ${toneInfo?.label}`} />
@@ -651,7 +680,7 @@ function ReadyView({ project }: { project: VideoProject }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass">
           <CardHeader>
             <CardTitle className="text-base">Sahneler</CardTitle>
             <CardDescription>
@@ -660,35 +689,41 @@ function ReadyView({ project }: { project: VideoProject }) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-2 max-h-[480px] overflow-y-auto scrollbar-thin pr-1">
-              {project.scenes.map((scene, i) => (
-                <button
-                  key={scene.id}
-                  onClick={() => setSelectedScene(i)}
-                  className={cn(
-                    "text-left rounded-lg overflow-hidden border transition-all",
-                    selectedScene === i
-                      ? "border-fuchsia-500 ring-2 ring-fuchsia-500/30"
-                      : "border-border hover:border-fuchsia-500/40"
-                  )}
-                >
-                  <div className="relative">
-                    <SceneThumbnail
-                      scene={scene}
-                      style={project.style}
-                      aspect={project.aspectRatio}
-                    />
-                    <div className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                      {i + 1}
+              {project.scenes.map((scene, i) => {
+                const isActive = selectedScene === i;
+                return (
+                  <button
+                    key={scene.id}
+                    onClick={() => setSelectedScene(i)}
+                    className={cn(
+                      "text-left rounded-lg overflow-hidden border transition-all",
+                      isActive
+                        ? "border-fuchsia-500 ring-2 ring-fuchsia-500/40 scale-[1.04] shadow-lg shadow-fuchsia-500/20"
+                        : "border-border hover:border-fuchsia-500/40 hover:-translate-y-0.5"
+                    )}
+                  >
+                    <div className="relative">
+                      <SceneThumbnail
+                        scene={scene}
+                        style={project.style}
+                        aspect={project.aspectRatio}
+                      />
+                      <div className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                        {i + 1}
+                      </div>
+                      <div className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white tabular-nums">
+                        {(scene.durationMs / 1000).toFixed(1)}s
+                      </div>
+                      {isActive && (
+                        <div className="absolute inset-0 ring-2 ring-fuchsia-500/60 rounded-lg pointer-events-none" />
+                      )}
                     </div>
-                    <div className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white tabular-nums">
-                      {(scene.durationMs / 1000).toFixed(1)}s
-                    </div>
-                  </div>
-                  <p className="p-2 text-[11px] text-muted-foreground line-clamp-2">
-                    {scene.subtitle || scene.text}
-                  </p>
-                </button>
-              ))}
+                    <p className="p-2 text-[11px] text-muted-foreground line-clamp-2">
+                      {scene.subtitle || scene.text}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -708,9 +743,11 @@ function Meta({
 }) {
   if (!value) return null;
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 -mx-2 transition-colors hover:bg-accent/60">
       <span className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" />
+        <span className="grid size-6 place-items-center rounded-md bg-gradient-to-br from-violet-500/15 to-fuchsia-500/15 text-fuchsia-400 transition-transform hover:scale-110">
+          <Icon className="size-3.5" />
+        </span>
         {label}
       </span>
       <span className="font-medium text-right">{value}</span>
@@ -880,7 +917,8 @@ function SceneEditor({
 
       {/* Sticky action bar */}
       <div className="sticky bottom-4 z-30">
-        <Card className="glass-strong border-fuchsia-500/30 shadow-xl shadow-fuchsia-500/10">
+        <Card className="glass-strong border-fuchsia-500/30 shadow-xl shadow-fuchsia-500/10 relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x" />
           <CardContent className="py-3 flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground">{localScenes.length}</span> sahne ·
@@ -899,7 +937,7 @@ function SceneEditor({
               <Button
                 onClick={handleSave}
                 disabled={saving || !dirty}
-                className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[40px] min-w-[180px]"
+                className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[40px] min-w-[180px] shine-on-hover relative overflow-hidden"
               >
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -1019,8 +1057,16 @@ function SceneEditorCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(idx * 0.03, 0.3) }}
     >
-      <Card className="glass card-glow overflow-hidden">
-        <CardHeader className="pb-3">
+      <Card className="glass card-glow overflow-hidden relative">
+        {/* Left gradient accent bar colored by scene.accentColor */}
+        <span
+          aria-hidden
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+          style={{
+            background: `linear-gradient(180deg, ${scene.accentColor || "#d946ef"}, color-mix(in oklch, ${scene.accentColor || "#d946ef"} 50%, transparent))`,
+          }}
+        />
+        <CardHeader className="pb-3 pl-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-sm font-bold shadow-md shadow-fuchsia-500/30 shrink-0">
@@ -1046,7 +1092,7 @@ function SceneEditorCard({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pl-5">
           {/* Live thumbnail + selects */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-1">

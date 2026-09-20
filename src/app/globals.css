@@ -341,3 +341,125 @@
   box-shadow: 0 0 12px 2px color-mix(in oklch, #d946ef 60%, transparent);
   cursor: pointer;
 }
+
+/* =========================================================
+   Task 6-fe additions: orbs, shine, gradient-x, btn-gradient,
+   card-hover-lift, mesh-radial, text-balance, tabular-nums
+   ========================================================= */
+
+/* Floating decorative orbs */
+@keyframes float-orb {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(12px, -22px) scale(1.08); }
+  66%  { transform: translate(-10px, 10px) scale(0.96); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.orb {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.4;
+  animation: float-orb 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.orb-sm { width: 10rem; height: 10rem; }
+.orb-md { width: 18rem; height: 18rem; }
+.orb-lg { width: 24rem; height: 24rem; }
+
+/* Animated horizontal gradient (for borders / text sweeps) */
+@keyframes gradient-x {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animated-gradient-x {
+  background-size: 250% 250%;
+  animation: gradient-x 6s ease infinite;
+}
+
+/* Light shine sweep on hover */
+@keyframes shine {
+  0%   { transform: translateX(-120%) skewX(-15deg); }
+  60%  { transform: translateX(220%) skewX(-15deg); }
+  100% { transform: translateX(220%) skewX(-15deg); }
+}
+.shine-on-hover {
+  position: relative;
+  overflow: hidden;
+}
+.shine-on-hover::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in oklch, #ffffff 18%, transparent) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%) skewX(-15deg);
+  pointer-events: none;
+  z-index: 1;
+}
+.shine-on-hover:hover::after {
+  animation: shine 0.9s ease;
+}
+
+/* Reusable gradient button */
+.btn-gradient {
+  background: linear-gradient(90deg, #7c3aed 0%, #d946ef 50%, #ec4899 100%);
+  background-size: 200% 200%;
+  color: #ffffff;
+  border: 0;
+  transition: filter 220ms ease, transform 120ms ease, background-position 600ms ease;
+}
+.btn-gradient:hover {
+  filter: brightness(1.08);
+  background-position: 100% 50%;
+}
+.btn-gradient:active {
+  transform: scale(0.97);
+}
+
+/* Card hover lift */
+.card-hover-lift {
+  transition: transform 280ms ease, box-shadow 280ms ease, border-color 280ms ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px -24px color-mix(in oklch, #d946ef 50%, transparent),
+    0 10px 28px -18px color-mix(in oklch, #7c3aed 35%, transparent);
+}
+
+/* Radial mesh variant for section backgrounds */
+.mesh-radial {
+  background-image:
+    radial-gradient(at 20% 20%, color-mix(in oklch, #7c3aed 18%, transparent) 0px, transparent 38%),
+    radial-gradient(at 80% 14%, color-mix(in oklch, #d946ef 18%, transparent) 0px, transparent 38%),
+    radial-gradient(at 65% 80%, color-mix(in oklch, #ec4899 16%, transparent) 0px, transparent 38%),
+    radial-gradient(at 18% 70%, color-mix(in oklch, #8b5cf6 14%, transparent) 0px, transparent 38%);
+  background-repeat: no-repeat;
+}
+
+/* Text balance utility for headings */
+.text-balance {
+  text-wrap: balance;
+}
+/* Tabular nums helper (in case Tailwind's variant isn't enough) */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Animated gradient border ring (rotating) */
+@keyframes ring-rotate {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.ring-rotate {
+  animation: ring-rotate 12s linear infinite;
+}
