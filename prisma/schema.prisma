@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/p/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model VideoProject {
+  id           String   @id @default(cuid())
+  title        String
+  topic        String
+  mode         String   // topic | product | script | youtube
+  language     String   @default("tr")
+  llmProvider  String   @default("zai")
+  ttsProvider  String   @default("zai")
+  voice        String   @default("tongtong")
+  tone         String   @default("professional")
+  style        String   @default("modern")
+  aspectRatio  String   @default("16:9")
+  status       String   @default("draft") // draft | generating | ready | error
+  scenes       String   // JSON string of Scene[]
+  audioUrl     String?
+  subtitles    String?  // SRT format
+  thumbnailUrl String?
+  durationSec  Int      @default(0)
+  sceneCount   Int      @default(0)
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assets Asset[]
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String   // image | audio | upload
+  url       String
+  name      String?
+  mimeType  String?
+  role      String?  // scene-visual | narration | thumbnail | product-upload
+  sceneIdx  Int?
+  createdAt DateTime @default(now())
+
+  project VideoProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([type])
+}
+
+model ProviderSetting {
+  id        String   @id @default(cuid())
+  provider  String   @unique // zai | openai | anthropic | gemini | elevenlabs | openai-tts
+  kind      String   // llm | tts
+  apiKey    String?
+  enabled   Boolean  @default(true)
+  config    String?  // JSON string of extra config
+  updatedAt DateTime @updatedAt
+}
+
+model AppSetting {
+  id    String @id
+  value String
+}

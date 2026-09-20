@@ -1,0 +1,168 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getProject, updateProject, addAsset } from "@/lib/project-store";
+import {
+  generateScript,
+  analyzeProductImage,
+  generateImage,
+  generateTtsAudio,
+  recommendTts,
+} from "@/lib/ai";
+import { buildSRT } from "@/lib/subtitles";
+import { saveAssetBuffer, toDataUrl } from "@/lib/storage";
+import { TONE_SPEED } from "@/lib/providers";
+import type { Scene, VideoProject } from "@/lib/types";
+
+// Background jobs tracker (in-memory; fine for single dev instance)
+const running = new Set<string>();
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json().catch(() => ({}));
+    const productImages: string[] = body.productImages || [];
+    const customScript: string | undefined = body.customScript;
+    const targetScenes: number = body.targetScenes || 5;
+
+    const project = await getProject(id);
+    if (!project) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (project.status === "generating" || running.has(id)) {
+      return NextResponse.json({ project, alreadyRunning: true });
+    }
+
+    // Kick off background generation (do not await in the route to allow long jobs)
+    running.add(id);
+    void runGeneration(project.id, {
+      topic: project.topic,
+      mode: project.mode,
+      language: project.language,
+      tone: project.tone,
+      style: project.style,
+      targetScenes,
+      productImages,
+      customScript,
+      voice: project.voice,
+      aspectRatio: project.aspectRatio,
+    }).catch(async (err) => {
+      console.error("Generation failed for", id, err);
+      await updateProject(id, { status: "error", errorMessage: String(err?.message || err) });
+    }).finally(() => {
+      running.delete(id);
+    });
+
+    return NextResponse.json({ project, started: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+}
+
+async function runGeneration(
+  projectId: string,
+  opts: {
+    topic: string;
+    mode: string;
+    language: string;
+    tone: VideoProject["tone"];
+    style: VideoProject["style"];
+    targetScenes: number;
+    productImages: string[];
+    customScript?: string;
+    voice: string;
+    aspectRatio: string;
+  }
+) {
+  await updateProject(projectId, { status: "generating", errorMessage: null });
+
+  // 1) Product analysis (if product mode)
+  let productAnalysis: string | undefined;
+  if (opts.mode === "product" && opts.productImages.length > 0) {
+    const analyses = [];
+    for (const img of opts.productImages.slice(0, 4)) {
+      try {
+        const analysis = await analyzeProductImage({
+          image: img,
+          language: opts.language,
+        });
+        analyses.push(analysis);
+      } catch (e) {
+        console.error("Product analysis failed:", e);
+      }
+    }
+    if (analyses.length > 0) {
+      productAnalysis = analyses
+        .map((a, i) => `Product ${i + 1}: ${a.name} (${a.category})\nFeatures: ${a.features.join(", ")}\nSelling points: ${a.sellingPoints.join(", ")}\nDescription: ${a.description}`)
+        .join("\n\n");
+    }
+  }
+
+  // 2) Generate script
+  const script = await generateScript({
+    topic: opts.topic,
+    mode: opts.mode as any,
+    language: opts.language,
+    tone: opts.tone,
+    style: opts.style,
+    targetScenes: opts.targetScenes,
+    productAnalysis,
+    customScript: opts.customScript,
+  });
+
+  const scenes: Scene[] = script.scenes;
+
+  // 3) Generate images for scenes that have imagePrompt
+  const sizeForAspect = imageSizeForAspect(opts.aspectRatio);
+  let thumbUrl: string | undefined;
+  for (const scene of scenes) {
+    if (scene.imagePrompt) {
+      try {
+        const { buffer } = await generateImage(scene.imagePrompt, sizeForAspect);
+        const saved = await saveAssetBuffer(buffer, "png", "image");
+        scene.imageUrl = saved.url;
+        await addAsset({ projectId, type: "image", url: saved.url, role: "scene-visual", sceneIdx: scene.index });
+        if (!thumbUrl) thumbUrl = saved.url;
+      } catch (e) {
+        console.error("Image gen failed for scene", scene.index, e);
+      }
+    }
+  }
+
+  // 4) Generate TTS audio for full narration (concatenated)
+  const fullNarration = scenes.map((s) => s.narration || s.text).join(" ");
+  const { voice, speed } = recommendTts("zai", opts.tone, opts.language);
+  let audioUrl: string | undefined;
+  try {
+    const audioBuf = await generateTtsAudio(fullNarration, voice, speed, "wav");
+    const saved = await saveAssetBuffer(audioBuf, "wav", "audio");
+    audioUrl = saved.url;
+    await addAsset({ projectId, type: "audio", url: saved.url, role: "narration" });
+  } catch (e) {
+    console.error("TTS failed:", e);
+  }
+
+  // 5) Build SRT subtitles
+  const subtitles = buildSRT(scenes);
+
+  // 6) Update project to ready
+  await updateProject(projectId, {
+    title: script.title,
+    scenes,
+    status: "ready",
+    audioUrl: audioUrl ?? null,
+    subtitles,
+    thumbnailUrl: thumbUrl ?? null,
+    errorMessage: null,
+  });
+}
+
+function imageSizeForAspect(aspect: string): string {
+  switch (aspect) {
+    case "9:16":
+      return "768x1344";
+    case "1:1":
+      return "1024x1024";
+    case "4:5":
+      return "864x1152";
+    case "16:9":
+    default:
+      return "1344x768";
+  }
+}
