@@ -514,3 +514,33 @@ Task: Fix stuck video generation + make scenes continuously animated (user: "vid
 2. **Accent theme switcher UI** + **bulk actions** (was planned but subagent dispatch failed due to context cancellation — re-dispatch next round).
 3. **MP4 export** via Playwright frame capture + ffmpeg.
 4. **Real external provider integration** (OpenAI/Claude/ElevenLabs when user supplies keys).
+
+---
+Task ID: 8
+Agent: Main (Z.ai Code) — user bug report "kanka görüntü yok"
+Task: Fix black/empty player stage (scenes not rendering)
+
+## Current Project Status Assessment
+- User reported: "kanka görüntü yok" with a screenshot showing the video player with a completely BLACK stage area (only controls visible, no scene content). VLM analysis confirmed: "görüntü alanı tamamen boş/siyah".
+- Root cause found: `.scene-stage` CSS class in globals.css had `position: relative` which OVERRIDES the Tailwind `absolute inset-0` utility applied via JSX (`<div className="scene-stage absolute inset-0">`). With `position: relative` + `inset-0` ignored, the absolutely-positioned stage had height 0 (confirmed via agent-browser: stageH=0), so all scene content (gradient bg, image, text) was invisible — only the player's separately-absolute controls rendered, over a black parent.
+
+## Completed Modifications
+
+### Bug Fix: Black player stage
+`src/app/globals.css`:
+- Removed `position: relative` from `.scene-stage` (kept overflow/ isolate/background). Now the Tailwind `absolute inset-0` class (from JSX) properly applies, making the stage fill its parent (the aspect-video container, height 339px) — scene content (gradient, ken-burns image, animated text) now renders visibly.
+
+## Verification Results
+- agent-browser DOM query BEFORE fix: stageH=0 → AFTER fix: stageH=339px, bgVisible=true.
+- VLM (z-ai vision) on screenshot AFTER fix: "Evet, sahne alanında içerik görünüyor. Arka planda koyu bir görsel, üzerinde büyük beyaz metinler ve altta açıklama metni bulunuyor. Siyah değil, hazırlanmış bir tasarım var."
+- Continuous animations still active: ken-burns=1, animated-gradient=7.
+- `bun run lint` → 0 errors.
+
+## Unresolved Issues / Risks
+- None blocking. Player renders correctly now.
+- Audio autoplay may be blocked by browser policy on first load (needs a user gesture — the play button click handles this).
+
+## Priority Recommendations for Next Phase
+- Re-dispatch the frontend subagent for: accent theme switcher UI, bulk actions in projects view, and further styling polish (was interrupted last round).
+- Per-scene generation progress.
+- MP4 export via Playwright frame capture.

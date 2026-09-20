@@ -143,7 +143,6 @@
 
 /* ---- Scene stage utility ---- */
 .scene-stage {
-  position: relative;
   overflow: hidden;
   isolation: isolate;
   background: #000;
