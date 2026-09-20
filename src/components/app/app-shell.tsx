@@ -12,6 +12,7 @@ import { ProjectsView } from "@/components/views/projects-view";
 import { DetailView } from "@/components/views/detail-view";
 import { SettingsView } from "@/components/views/settings-view";
 import { TemplatesView } from "@/components/views/templates-view";
+import { DashboardView } from "@/components/views/dashboard-view";
 
 function DesktopThemeToggle() {
   return (
@@ -39,6 +40,7 @@ export function AppShell() {
           {view === "detail" && <DetailView />}
           {view === "settings" && <SettingsView />}
           {view === "templates" && <TemplatesView />}
+          {view === "dashboard" && <DashboardView />}
         </div>
       </main>
       <Footer />

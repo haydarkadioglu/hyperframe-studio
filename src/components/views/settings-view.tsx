@@ -278,6 +278,19 @@ interface ProviderCardProps {
   onChange: (patch: Partial<ProviderSettings[string]>) => void;
 }
 
+// Provider emoji/logo tile lookup
+function providerEmoji(id: string, name: string): string {
+  const map: Record<string, string> = {
+    zai: "🤖",
+    openai: "🧠",
+    anthropic: "📚",
+    gemini: "💎",
+    elevenlabs: "🔊",
+    "openai-tts": "🗣️",
+  };
+  return map[id] ?? "⚡";
+}
+
 function ProviderCard({
   id,
   name,
@@ -293,9 +306,16 @@ function ProviderCard({
   const enabled = settings?.enabled ?? !requiresKey;
   const apiKey = settings?.apiKey ?? "";
   const isBuiltIn = !requiresKey;
+  const emoji = providerEmoji(id, name);
 
   return (
-    <Card className={cn("overflow-hidden", enabled ? "border-fuchsia-500/30" : "")}>
+    <Card
+      className={cn(
+        "glass card-glow overflow-hidden relative",
+        enabled ? "border-fuchsia-500/30" : "",
+        isBuiltIn && "pulse-glow"
+      )}
+    >
       <div
         className={cn(
           "h-1 w-full",
@@ -306,17 +326,31 @@ function ProviderCard({
       />
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              {name}
-              {isBuiltIn && (
-                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
-                  <CheckCircle2 className="size-3" />
-                  Yerleşik
-                </Badge>
+          <div className="flex items-start gap-3 min-w-0">
+            <span
+              className={cn(
+                "grid size-11 place-items-center rounded-xl text-2xl shadow-md shrink-0",
+                isBuiltIn
+                  ? "bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-emerald-500/30"
+                  : enabled
+                  ? "bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 ring-1 ring-fuchsia-500/30"
+                  : "bg-muted"
               )}
-            </CardTitle>
-            <CardDescription className="mt-1">{description}</CardDescription>
+            >
+              {emoji}
+            </span>
+            <div className="min-w-0">
+              <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                {name}
+                {isBuiltIn && (
+                  <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
+                    <CheckCircle2 className="size-3" />
+                    Yerleşik
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-1">{description}</CardDescription>
+            </div>
           </div>
           <Switch checked={enabled} onCheckedChange={(v) => onChange({ enabled: v })} />
         </div>

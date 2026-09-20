@@ -9,12 +9,14 @@ import {
   Settings,
   Sparkles,
   X,
+  BarChart3,
 } from "lucide-react";
 import { useApp, type ViewName } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
+import { listProjects, type ApiError } from "@/lib/api-client";
 
 interface NavItem {
   id: ViewName;
@@ -26,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Ana Sayfa", icon: LayoutDashboard },
   { id: "create", label: "Video Oluştur", icon: Clapperboard },
   { id: "projects", label: "Projelerim", icon: FolderOpen },
+  { id: "dashboard", label: "Panel", icon: BarChart3 },
   { id: "templates", label: "Şablonlar", icon: LayoutTemplate },
   { id: "settings", label: "Ayarlar", icon: Settings },
 ];
@@ -77,26 +80,33 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               onNavigate?.();
             }}
             className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all",
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all overflow-hidden",
               "min-h-[44px] w-full text-left",
               active
                 ? "bg-gradient-to-r from-violet-500/15 via-fuchsia-500/15 to-transparent text-foreground font-medium ring-1 ring-fuchsia-500/20"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
+            {/* sliding bg on hover */}
             <span
               className={cn(
-                "grid size-8 place-items-center rounded-lg transition-colors",
+                "pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-300",
+                active ? "opacity-0" : "bg-gradient-to-r from-violet-500/5 to-fuchsia-500/0"
+              )}
+            />
+            <span
+              className={cn(
+                "relative grid size-8 place-items-center rounded-lg transition-all duration-200",
                 active
                   ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30"
-                  : "bg-muted text-muted-foreground group-hover:text-foreground"
+                  : "bg-muted text-muted-foreground group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:text-white group-hover:scale-105"
               )}
             >
-              <Icon className="size-4" />
+              <Icon className="size-4 transition-transform group-hover:scale-110" />
             </span>
-            <span>{item.label}</span>
+            <span className="relative">{item.label}</span>
             {active && (
-              <span className="ml-auto size-1.5 rounded-full bg-fuchsia-500" />
+              <span className="relative ml-auto size-1.5 rounded-full bg-fuchsia-500" />
             )}
           </button>
         );
@@ -123,6 +133,45 @@ function NewVideoButton({ onClick }: { onClick?: () => void }) {
   );
 }
 
+function SidebarStatsBadge() {
+  const go = useApp((s) => s.go);
+  const [count, setCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    listProjects()
+      .then((p) => {
+        if (alive) setCount(p.length);
+      })
+      .catch((_e: ApiError) => {
+        if (alive) setCount(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (count === null) return null;
+  return (
+    <button
+      onClick={() => go("projects")}
+      className="group w-full rounded-xl border border-border/60 bg-muted/40 hover:bg-muted/60 transition-colors p-3 text-left"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="grid size-6 place-items-center rounded-md bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 text-fuchsia-500">
+            <FolderOpen className="size-3.5" />
+          </span>
+          Toplam proje
+        </span>
+        <span className="text-sm font-bold tabular-nums text-foreground group-hover:text-fuchsia-500 transition-colors">
+          {count}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col gap-6 p-4">
@@ -133,6 +182,7 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
       <div className="flex-1 overflow-y-auto scrollbar-thin -mx-1 px-1">
         <NavList onNavigate={onNavigate} />
       </div>
+      <SidebarStatsBadge />
       <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           <span className="font-medium text-foreground">Hyperframe Studio</span>{" "}

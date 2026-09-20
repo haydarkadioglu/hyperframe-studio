@@ -13,6 +13,7 @@ import type {
   AnalyzeProductBody,
   AnalyzeProductResponse,
   ProviderSettings,
+  Scene,
 } from "./types";
 
 export class ApiError extends Error {
@@ -106,6 +107,25 @@ export async function renderProject(
   });
 }
 
+export async function duplicateProject(id: string): Promise<VideoProject> {
+  const d = await request<{ project: VideoProject }>(
+    `/api/projects/${encodeURIComponent(id)}/duplicate`,
+    { method: "POST" }
+  );
+  return d.project;
+}
+
+export async function updateProject(
+  id: string,
+  patch: { title?: string; tone?: string; style?: string; scenes?: Scene[] }
+): Promise<VideoProject> {
+  const d = await request<{ project: VideoProject }>(
+    `/api/projects/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
+  return d.project;
+}
+
 // ---- Generation primitives ----
 
 export async function generateScript(
@@ -171,6 +191,35 @@ export async function uploadImage(
     method: "POST",
     body: JSON.stringify({ image: base64, name }),
   });
+}
+
+// ---- Stats ----
+
+export interface StatsData {
+  totals: {
+    total: number;
+    ready: number;
+    generating: number;
+    draft: number;
+    error: number;
+    totalDurationSec: number;
+    totalScenes: number;
+  };
+  distributions: {
+    byMode: { id: string; label: string; emoji: string; count: number }[];
+    byLanguage: { code: string; name: string; flag: string; count: number }[];
+    byTone: { id: string; count: number }[];
+    byStyle: { id: string; count: number }[];
+    byStatus: { id: string; count: number }[];
+    byAspectRatio: { id: string; count: number }[];
+    byLlmProvider: { id: string; count: number }[];
+    byTtsProvider: { id: string; count: number }[];
+  };
+  dailyActivity: { date: string; label: string; count: number }[];
+}
+
+export async function getStats(): Promise<StatsData> {
+  return request<StatsData>("/api/stats");
 }
 
 // ---- File download helpers ----

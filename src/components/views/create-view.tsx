@@ -16,6 +16,13 @@ import {
   Info,
   Upload,
   FileText,
+  Globe,
+  AudioLines,
+  Palette,
+  RectangleHorizontal,
+  Cpu,
+  Mic,
+  Receipt,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import {
@@ -122,43 +129,58 @@ export function CreateView() {
         </Button>
       </header>
 
-      {/* Step indicator */}
-      <ol className="flex flex-wrap gap-2">
-        {STEPS.map((label, i) => {
-          const active = i === step;
-          const done = i < step;
-          return (
-            <li key={label}>
-              <button
-                onClick={() => i < step && setStep(i)}
-                disabled={i > step}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors min-h-[36px]",
-                  active
-                    ? "border-fuchsia-500 bg-fuchsia-500/10 text-foreground"
-                    : done
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15"
-                    : "border-border text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                <span
+      {/* Step indicator - connected progress bar */}
+      <div className="relative">
+        <ol className="flex items-center gap-2">
+          {STEPS.map((label, i) => {
+            const active = i === step;
+            const done = i < step;
+            return (
+              <li key={label} className="flex items-center gap-2 flex-1 min-w-0">
+                <button
+                  onClick={() => i < step && setStep(i)}
+                  disabled={i > step}
                   className={cn(
-                    "grid size-5 place-items-center rounded-full text-[10px]",
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all min-h-[36px] shrink-0",
                     active
-                      ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white"
+                      ? "border-fuchsia-500 bg-fuchsia-500/10 text-foreground"
                       : done
-                      ? "bg-emerald-500 text-white"
-                      : "bg-muted text-muted-foreground"
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15"
+                      : "border-border text-muted-foreground cursor-not-allowed"
                   )}
                 >
-                  {done ? <Check className="size-3" /> : i + 1}
-                </span>
-                {label}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                  <span
+                    className={cn(
+                      "relative grid size-5 place-items-center rounded-full text-[10px]",
+                      active
+                        ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white"
+                        : done
+                        ? "bg-emerald-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {active && (
+                      <span className="absolute inset-0 rounded-full bg-fuchsia-500/40 animate-ping" />
+                    )}
+                    <span className="relative">
+                      {done ? <Check className="size-3" /> : i + 1}
+                    </span>
+                  </span>
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+                {i < STEPS.length - 1 && (
+                  <span
+                    className={cn(
+                      "h-px flex-1 transition-colors",
+                      done ? "bg-gradient-to-r from-emerald-500/60 to-fuchsia-500/40" : "bg-border"
+                    )}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -643,242 +665,284 @@ function StepConfig() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Dil ve Stil</CardTitle>
-          <CardDescription>
-            Videonuzun dilini, tonunu ve görsel stilini seçin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Language */}
-          <div className="space-y-2">
-            <Label>Dil</Label>
-            <Select
-              value={wizard.language}
-              onValueChange={(v) => setWizard({ language: v })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Dil seçin" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {LANGUAGES.map((l) => (
-                  <SelectItem key={l.code} value={l.code}>
-                    <span className="mr-2">{l.flag}</span>
-                    {l.nativeName} ({l.name})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <ConfigSection
+        title="Dil ve Stil"
+        desc="Videonuzun dilini, tonunu ve görsel stilini seçin."
+        icon={Palette}
+        accent="from-violet-500 to-fuchsia-500"
+      >
+        {/* Language */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Globe className="size-3.5 text-muted-foreground" />
+            Dil
+          </Label>
+          <Select
+            value={wizard.language}
+            onValueChange={(v) => setWizard({ language: v })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Dil seçin" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {LANGUAGES.map((l) => (
+                <SelectItem key={l.code} value={l.code}>
+                  <span className="mr-2">{l.flag}</span>
+                  {l.nativeName} ({l.name})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {/* Tone */}
-          <div className="space-y-2">
-            <Label>Ton</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {TONES.map((t) => {
-                const active = wizard.tone === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setWizard({ tone: t.id as Tone })}
+        {/* Tone */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <AudioLines className="size-3.5 text-muted-foreground" />
+            Ton
+          </Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {TONES.map((t) => {
+              const active = wizard.tone === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setWizard({ tone: t.id as Tone })}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition-all",
+                    active
+                      ? "border-fuchsia-500 bg-fuchsia-500/10"
+                      : "hover:border-muted-foreground"
+                  )}
+                >
+                  <div className="text-xl mb-1">{t.emoji}</div>
+                  <p className="text-sm font-medium">{t.label}</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {t.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Style */}
+        <div className="space-y-2">
+          <Label>Video stili</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {STYLES.map((s) => {
+              const active = wizard.style === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setWizard({ style: s.id as VideoStyle })}
+                  className={cn(
+                    "overflow-hidden rounded-xl border transition-all text-left",
+                    active
+                      ? "border-fuchsia-500 ring-2 ring-fuchsia-500/30"
+                      : "hover:border-muted-foreground"
+                  )}
+                >
+                  <div
                     className={cn(
-                      "rounded-xl border p-3 text-left transition-all",
-                      active
-                        ? "border-fuchsia-500 bg-fuchsia-500/10"
-                        : "hover:border-muted-foreground"
+                      "h-10 w-full bg-gradient-to-r",
+                      s.gradient
                     )}
-                  >
-                    <div className="text-xl mb-1">{t.emoji}</div>
-                    <p className="text-sm font-medium">{t.label}</p>
+                  />
+                  <div className="p-2">
+                    <p className="text-sm font-medium">{s.label}</p>
                     <p className="text-[10px] text-muted-foreground leading-tight">
-                      {t.description}
+                      {s.description}
                     </p>
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* Style */}
-          <div className="space-y-2">
-            <Label>Video stili</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {STYLES.map((s) => {
-                const active = wizard.style === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setWizard({ style: s.id as VideoStyle })}
-                    className={cn(
-                      "overflow-hidden rounded-xl border transition-all text-left",
-                      active
-                        ? "border-fuchsia-500 ring-2 ring-fuchsia-500/30"
-                        : "hover:border-muted-foreground"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "h-10 w-full bg-gradient-to-r",
-                        s.gradient
-                      )}
-                    />
-                    <div className="p-2">
-                      <p className="text-sm font-medium">{s.label}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">
-                        {s.description}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Aspect ratio */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <RectangleHorizontal className="size-3.5 text-muted-foreground" />
+            En-boy oranı
+          </Label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {ASPECTS.map((a) => {
+              const active = wizard.aspectRatio === a.id;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setWizard({ aspectRatio: a.id })}
+                  className={cn(
+                    "rounded-xl border p-3 text-left transition-all",
+                    active
+                      ? "border-fuchsia-500 bg-fuchsia-500/10"
+                      : "hover:border-muted-foreground"
+                  )}
+                >
+                  <p className="text-sm font-semibold">{a.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{a.hint}</p>
+                </button>
+              );
+            })}
           </div>
+        </div>
+      </ConfigSection>
 
-          {/* Aspect ratio */}
-          <div className="space-y-2">
-            <Label>En-boy oranı</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {ASPECTS.map((a) => {
-                const active = wizard.aspectRatio === a.id;
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => setWizard({ aspectRatio: a.id })}
-                    className={cn(
-                      "rounded-xl border p-3 text-left transition-all",
-                      active
-                        ? "border-fuchsia-500 bg-fuchsia-500/10"
-                        : "hover:border-muted-foreground"
-                    )}
-                  >
-                    <p className="text-sm font-semibold">{a.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{a.hint}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sağlayıcılar</CardTitle>
-          <CardDescription>
-            Hangi LLM ile senaryo, hangi TTS ile seslendirme yapılacağını seçin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* LLM */}
-          <div className="space-y-2">
-            <Label>LLM Sağlayıcısı</Label>
-            <Select
-              value={wizard.llmProvider}
-              onValueChange={(v) => setWizard({ llmProvider: v })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LLM_PROVIDERS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <span className="flex flex-col">
-                      <span>{p.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {p.models.join(", ")}
-                      </span>
+      <ConfigSection
+        title="Sağlayıcılar"
+        desc="Hangi LLM ile senaryo, hangi TTS ile seslendirme yapılacağını seçin."
+        icon={Cpu}
+        accent="from-fuchsia-500 to-pink-500"
+      >
+        {/* LLM */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Cpu className="size-3.5 text-muted-foreground" />
+            LLM Sağlayıcısı
+          </Label>
+          <Select
+            value={wizard.llmProvider}
+            onValueChange={(v) => setWizard({ llmProvider: v })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LLM_PROVIDERS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <span className="flex flex-col">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {p.models.join(", ")}
                     </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ProviderBadges requiresKey={LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider)?.requiresKey} />
-          </div>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ProviderBadges requiresKey={LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider)?.requiresKey} />
+        </div>
 
-          {/* TTS */}
-          <div className="space-y-2">
-            <Label>TTS Sağlayıcısı</Label>
-            <Select
-              value={wizard.ttsProvider}
-              onValueChange={(v) => {
-                const voices = getVoicesForProvider(v);
-                const rec = recommendVoice(v, wizard.tone, wizard.language);
+        {/* TTS */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <Mic className="size-3.5 text-muted-foreground" />
+            TTS Sağlayıcısı
+          </Label>
+          <Select
+            value={wizard.ttsProvider}
+            onValueChange={(v) => {
+              const voices = getVoicesForProvider(v);
+              const rec = recommendVoice(v, wizard.tone, wizard.language);
+              setWizard({
+                ttsProvider: v,
+                voice: voices.find((vv) => vv.id === rec)?.id ?? voices[0]?.id ?? "",
+              });
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TTS_PROVIDERS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <span className="flex flex-col">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {p.voices.length} ses
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ProviderBadges requiresKey={TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider)?.requiresKey} />
+        </div>
+
+        {/* Voice */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-1.5">
+              <Mic className="size-3.5 text-muted-foreground" />
+              Ses
+            </Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
                 setWizard({
-                  ttsProvider: v,
-                  voice: voices.find((vv) => vv.id === rec)?.id ?? voices[0]?.id ?? "",
-                });
-              }}
+                  voice: recommendVoice(
+                    wizard.ttsProvider,
+                    wizard.tone,
+                    wizard.language
+                  ),
+                })
+              }
             >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TTS_PROVIDERS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <span className="flex flex-col">
-                      <span>{p.name}</span>
+              <Sparkles className="size-3.5" />
+              Otomatik öner
+            </Button>
+          </div>
+          <Select
+            value={wizard.voice}
+            onValueChange={(v) => setWizard({ voice: v })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {voices.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  <span className="flex flex-col">
+                    <span>
+                      {v.name}{" "}
                       <span className="text-[10px] text-muted-foreground">
-                        {p.voices.length} ses
+                        ({v.gender})
                       </span>
                     </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ProviderBadges requiresKey={TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider)?.requiresKey} />
-          </div>
-
-          {/* Voice */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Ses</Label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setWizard({
-                    voice: recommendVoice(
-                      wizard.ttsProvider,
-                      wizard.tone,
-                      wizard.language
-                    ),
-                  })
-                }
-              >
-                <Sparkles className="size-3.5" />
-                Otomatik öner
-              </Button>
-            </div>
-            <Select
-              value={wizard.voice}
-              onValueChange={(v) => setWizard({ voice: v })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {voices.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    <span className="flex flex-col">
-                      <span>
-                        {v.name}{" "}
-                        <span className="text-[10px] text-muted-foreground">
-                          ({v.gender})
-                        </span>
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {v.description}
-                      </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {v.description}
                     </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </ConfigSection>
     </div>
+  );
+}
+
+function ConfigSection({
+  title,
+  desc,
+  icon: Icon,
+  accent,
+  children,
+}: {
+  title: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="glass card-glow overflow-hidden">
+      <div className={cn("h-1 w-full bg-gradient-to-r", accent)} />
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <span className={cn("grid size-7 place-items-center rounded-lg bg-gradient-to-br text-white shadow-md", accent)}>
+            <Icon className="size-4" />
+          </span>
+          {title}
+        </CardTitle>
+        <CardDescription>{desc}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -1012,10 +1076,15 @@ function StepSummary() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
+      {/* Receipt-styled summary card */}
+      <Card className="glass overflow-hidden relative">
+        {/* gradient header */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500" />
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Check className="size-5 text-emerald-500" />
+            <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
+              <Receipt className="size-4" />
+            </span>
             Özet
           </CardTitle>
           <CardDescription>
@@ -1023,21 +1092,24 @@ function StepSummary() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <dl className="divide-y divide-border">
-            {summary.map((row) => (
-              <div
-                key={row.label}
-                className="flex items-start justify-between gap-4 py-2.5"
-              >
-                <dt className="text-sm text-muted-foreground">{row.label}</dt>
-                <dd className="text-sm font-medium text-right">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
+          {/* receipt body with perforated edges */}
+          <div className="relative rounded-xl bg-muted/30 border border-dashed border-border p-1">
+            <dl className="divide-y divide-border">
+              {summary.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex items-start justify-between gap-4 py-2.5 px-3"
+                >
+                  <dt className="text-sm text-muted-foreground">{row.label}</dt>
+                  <dd className="text-sm font-medium text-right">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-pink-500/10 border-fuchsia-500/30">
+      <Card className="bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-pink-500/10 border-fuchsia-500/30 glass-strong">
         <CardContent className="py-6 flex flex-col sm:flex-row items-center gap-4 justify-between">
           <div className="text-center sm:text-left">
             <p className="text-base font-semibold">Videoyu üretmeye hazır mısın?</p>

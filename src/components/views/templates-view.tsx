@@ -223,32 +223,46 @@ export function TemplatesView() {
             <motion.button
               key={t.id}
               variants={item}
-              whileHover={{ y: -4 }}
+              whileHover={{ y: -6 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => applyTemplate(t)}
               className="text-left"
             >
-              <Card className="h-full overflow-hidden group hover:shadow-xl hover:shadow-fuchsia-500/10 hover:border-fuchsia-500/40 transition-all">
-                <div className="relative aspect-[3/1.4] overflow-hidden">
+              <Card className="glass card-glow h-full overflow-hidden group hover:border-fuchsia-500/40 relative">
+                {/* Taller gradient banner with decorative pattern */}
+                <div className="relative aspect-[3/1.6] overflow-hidden">
                   <div
                     className={cn(
                       "absolute inset-0 bg-gradient-to-br animated-gradient",
                       t.gradient
                     )}
                   />
+                  {/* decorative shapes */}
+                  <div className="absolute -top-6 -right-6 size-24 rounded-full bg-white/10 blur-2xl" />
+                  <div className="absolute -bottom-10 -left-6 size-28 rounded-full bg-white/5 blur-2xl" />
+                  <div className="absolute top-1/4 right-1/4 size-1.5 rounded-full bg-white/40" />
+                  <div className="absolute top-1/2 right-1/3 size-1 rounded-full bg-white/30" />
+                  <div className="absolute bottom-1/3 right-1/2 size-1.5 rounded-full bg-white/40" />
+
                   <div className="absolute inset-0 grid place-items-center">
-                    <span className="text-5xl drop-shadow-lg group-hover:scale-110 transition-transform">
+                    <span className="text-6xl drop-shadow-2xl group-hover:scale-110 transition-transform duration-500">
                       {t.emoji}
                     </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                   {t.aspectRatio && (
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-3 right-3">
                       <Badge className="bg-black/50 text-white border-0 backdrop-blur-sm">
                         {t.aspectRatio}
                       </Badge>
                     </div>
                   )}
+                  {/* Slide-up "Kullan" CTA on hover */}
+                  <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <div className="rounded-lg bg-white/15 backdrop-blur-md border border-white/30 px-3 py-2 text-center text-sm font-semibold text-white shadow-lg">
+                      Kullan →
+                    </div>
+                  </div>
                 </div>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center justify-between gap-2">

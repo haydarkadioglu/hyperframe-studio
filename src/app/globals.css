@@ -138,7 +138,7 @@
   border-radius: 9999px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+  background: linear-gradient(180deg, #7c3aed, #d946ef);
 }
 
 /* ---- Scene stage utility ---- */
@@ -210,3 +210,134 @@
 /* Hide horizontal scrollbar for carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ---- Mesh background (animated multi-blob gradient) ---- */
+@keyframes mesh-shift {
+  0%   { background-position: 0% 0%; }
+  25%  { background-position: 100% 0%; }
+  50%  { background-position: 100% 100%; }
+  75%  { background-position: 0% 100%; }
+  100% { background-position: 0% 0%; }
+}
+.mesh-bg {
+  background-image:
+    radial-gradient(at 18% 22%, color-mix(in oklch, #7c3aed 32%, transparent) 0px, transparent 45%),
+    radial-gradient(at 82% 18%, color-mix(in oklch, #d946ef 30%, transparent) 0px, transparent 45%),
+    radial-gradient(at 75% 78%, color-mix(in oklch, #ec4899 28%, transparent) 0px, transparent 45%),
+    radial-gradient(at 25% 80%, color-mix(in oklch, #8b5cf6 26%, transparent) 0px, transparent 45%);
+  background-size: 180% 180%;
+  background-repeat: no-repeat;
+  animation: mesh-shift 22s ease-in-out infinite;
+}
+:is(.light) .mesh-bg {
+  background-image:
+    radial-gradient(at 18% 22%, color-mix(in oklch, #7c3aed 18%, transparent) 0px, transparent 45%),
+    radial-gradient(at 82% 18%, color-mix(in oklch, #d946ef 18%, transparent) 0px, transparent 45%),
+    radial-gradient(at 75% 78%, color-mix(in oklch, #ec4899 16%, transparent) 0px, transparent 45%),
+    radial-gradient(at 25% 80%, color-mix(in oklch, #8b5cf6 16%, transparent) 0px, transparent 45%);
+}
+
+/* ---- Pulse glow for active/featured elements ---- */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, #d946ef 40%, transparent); }
+  50%      { box-shadow: 0 0 22px 4px color-mix(in oklch, #d946ef 35%, transparent); }
+}
+.pulse-glow { animation: pulse-glow 2.6s ease-in-out infinite; }
+
+/* ---- Shimmer border (animated gradient border) ---- */
+@keyframes shimmer-border {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.gradient-border {
+  position: relative;
+  border-radius: inherit;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    90deg,
+    #7c3aed 0%,
+    #d946ef 25%,
+    #ec4899 50%,
+    #d946ef 75%,
+    #7c3aed 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-border 4s linear infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ---- Glass surfaces ---- */
+.glass {
+  background: color-mix(in oklch, var(--card) 60%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+}
+.glass-strong {
+  background: color-mix(in oklch, var(--card) 80%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+}
+
+/* ---- Card hover glow ---- */
+.card-glow {
+  transition: box-shadow 280ms ease, transform 280ms ease, border-color 280ms ease;
+}
+.card-glow:hover {
+  box-shadow:
+    0 18px 40px -20px color-mix(in oklch, #d946ef 45%, transparent),
+    0 8px 24px -16px color-mix(in oklch, #7c3aed 30%, transparent);
+}
+
+/* ---- Gradient text ---- */
+.text-gradient {
+  background: linear-gradient(90deg, #7c3aed 0%, #d946ef 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- Custom range slider for player scrubber ---- */
+.hf-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #7c3aed, #d946ef, #ec4899);
+  outline: none;
+  cursor: pointer;
+}
+.hf-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #d946ef;
+  box-shadow: 0 0 12px 2px color-mix(in oklch, #d946ef 60%, transparent);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.hf-range::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.hf-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #d946ef;
+  box-shadow: 0 0 12px 2px color-mix(in oklch, #d946ef 60%, transparent);
+  cursor: pointer;
+}

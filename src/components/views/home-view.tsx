@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, animate } from "framer-motion";
 import {
   Sparkles,
   Wand2,
@@ -16,9 +16,11 @@ import {
   ArrowRight,
   PlayCircle,
   FolderOpen,
+  PenLine,
+  MousePointerClick,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { MODES, MODE_MAP, STYLE_MAP } from "@/lib/providers";
+import { MODES, MODE_MAP, STYLE_MAP, LANGUAGES, TONES, LLM_PROVIDERS, TTS_PROVIDERS } from "@/lib/providers";
 import {
   listProjects,
   timeAgo,
@@ -106,6 +108,58 @@ const FEATURES: {
   },
 ];
 
+const KPI_PILLS: { label: string; value: number; suffix?: string }[] = [
+  { label: "Dil", value: LANGUAGES.length },
+  { label: "Ton", value: TONES.length },
+  { label: "Mod", value: MODES.length },
+  { label: "LLM", value: LLM_PROVIDERS.length },
+  { label: "TTS", value: TTS_PROVIDERS.length },
+];
+
+const HOW_IT_WORKS: {
+  step: string;
+  title: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}[] = [
+  {
+    step: "1",
+    title: "Konu/Fotoğraf Gir",
+    desc: "Bir konu yaz, ürün fotoğrafları yükle ya da hazır senaryonu yapıştır. Modunu seç.",
+    icon: PenLine,
+    color: "from-violet-500 to-fuchsia-500",
+  },
+  {
+    step: "2",
+    title: "AI Üretir",
+    desc: "LLM senaryoyu sahnelere böler, görseller üretilir, TTS seslendirir, altyazılar oluşturulur.",
+    icon: Sparkles,
+    color: "from-fuchsia-500 to-pink-500",
+  },
+  {
+    step: "3",
+    title: "İndir & Paylaş",
+    desc: "Animasyonlu oynatıcıda izle, SRT/VTT altyazı ve ses dosyasını indir, YouTube'a yükle.",
+    icon: MousePointerClick,
+    color: "from-pink-500 to-rose-500",
+  },
+];
+
+function useCountUp(target: number, duration = 0.9) {
+  const mv = useMotionValue(0);
+  const [v, setV] = React.useState(0);
+  React.useEffect(() => {
+    const controls = animate(mv, target, {
+      duration,
+      ease: "easeOut",
+      onUpdate: (x) => setV(x),
+    });
+    return () => controls.stop();
+  }, [target, duration, mv]);
+  return Math.round(v);
+}
+
 export function HomeView() {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
@@ -138,15 +192,19 @@ export function HomeView() {
 
   return (
     <div className="space-y-12 md:space-y-16">
-      {/* Hero */}
+      {/* Hero with mesh background */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-transparent p-8 sm:p-12 md:p-16"
       >
-        <div className="absolute -top-24 -right-24 size-72 rounded-full bg-fuchsia-500/20 blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 size-72 rounded-full bg-violet-500/20 blur-3xl pointer-events-none" />
+        {/* Animated mesh background */}
+        <div className="absolute inset-0 mesh-bg opacity-30 pointer-events-none" />
+        {/* Floating decorative shapes */}
+        <div className="absolute -top-20 -right-20 size-72 rounded-full bg-fuchsia-500/30 blur-3xl float-slow pointer-events-none" />
+        <div className="absolute -bottom-28 -left-28 size-72 rounded-full bg-violet-500/30 blur-3xl float-medium pointer-events-none" />
+        <div className="absolute top-1/3 right-1/4 size-32 rounded-full bg-pink-500/20 blur-2xl float-slow pointer-events-none" />
 
         <div className="relative max-w-3xl">
           <Badge
@@ -192,6 +250,20 @@ export function HomeView() {
         </div>
       </motion.section>
 
+      {/* KPI pills strip */}
+      <motion.section
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="flex flex-wrap items-center gap-3"
+      >
+        {KPI_PILLS.map((pill) => (
+          <motion.div key={pill.label} variants={item}>
+            <KPill {...pill} />
+          </motion.div>
+        ))}
+      </motion.section>
+
       {/* Modes */}
       <section>
         <SectionHeader
@@ -215,7 +287,7 @@ export function HomeView() {
                 onClick={() => pickMode(mode.id)}
                 className="group text-left"
               >
-                <Card className="h-full overflow-hidden transition-shadow hover:shadow-xl hover:shadow-fuchsia-500/10 hover:border-fuchsia-500/40">
+                <Card className="glass card-glow h-full overflow-hidden hover:border-fuchsia-500/40 relative gradient-border">
                   <div
                     className={`h-1.5 w-full bg-gradient-to-r ${mode.gradient}`}
                   />
@@ -231,8 +303,8 @@ export function HomeView() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="mt-auto">
-                    <span className="inline-flex items-center gap-1 text-sm font-medium text-fuchsia-500 group-hover:gap-2 transition-all">
-                      Başla <ArrowRight className="size-3.5" />
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-fuchsia-500 transition-all group-hover:gap-2">
+                      Başla <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
                     </span>
                   </CardContent>
                 </Card>
@@ -240,6 +312,55 @@ export function HomeView() {
             );
           })}
         </motion.div>
+      </section>
+
+      {/* How it works */}
+      <section>
+        <SectionHeader
+          eyebrow="Nasıl Çalışır?"
+          title="3 adımda videon hazır"
+          desc="Konuyu gir, AI üretsin, indir & paylaş. Karmaşık kurulum yok."
+        />
+        <div className="relative mt-8">
+          {/* Connecting line on md+ */}
+          <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-violet-500/40 via-fuchsia-500/40 to-pink-500/40" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {HOW_IT_WORKS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <motion.div
+                  key={s.step}
+                  initial={{ opacity: 0, y: 18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.45, delay: i * 0.1 }}
+                >
+                  <Card className="glass card-glow h-full text-center relative overflow-hidden">
+                    <CardContent className="pt-8 pb-6 px-6">
+                      <div className="relative mx-auto mb-4 size-16">
+                        <div
+                          className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${s.color} blur-md opacity-40`}
+                        />
+                        <div
+                          className={`relative grid size-16 place-items-center rounded-2xl bg-gradient-to-br ${s.color} text-white shadow-lg`}
+                        >
+                          <Icon className="size-7" />
+                        </div>
+                        <span className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-background border-2 border-fuchsia-500 text-xs font-bold text-fuchsia-500">
+                          {s.step}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-semibold">{s.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                        {s.desc}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       {/* Features */}
@@ -259,11 +380,15 @@ export function HomeView() {
           {FEATURES.map((f) => {
             const Icon = f.icon;
             return (
-              <motion.div key={f.title} variants={item} whileHover={{ y: -4 }}>
-                <Card className="h-full hover:border-fuchsia-500/40 transition-colors">
+              <motion.div
+                key={f.title}
+                variants={item}
+                whileHover={{ y: -4, rotate: -0.5 }}
+              >
+                <Card className="glass card-glow h-full hover:border-fuchsia-500/40 transition-colors">
                   <CardHeader>
                     <div
-                      className={`grid size-10 place-items-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md`}
+                      className={`grid size-10 place-items-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md transition-transform group-hover:rotate-6`}
                     >
                       <Icon className="size-5" />
                     </div>
@@ -294,7 +419,7 @@ export function HomeView() {
             onClick={() => go("projects")}
             className="text-fuchsia-500 hover:text-fuchsia-400"
           >
-            Tümünü gör
+            Tümünü Gör
             <ArrowRight className="size-3.5" />
           </Button>
         </div>
@@ -382,6 +507,18 @@ export function HomeView() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function KPill({ label, value }: { label: string; value: number; suffix?: string }) {
+  const count = useCountUp(value);
+  return (
+    <div className="glass rounded-full px-4 py-2 flex items-center gap-2.5">
+      <span className="text-lg font-bold tabular-nums text-gradient">
+        {count}
+      </span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
 }

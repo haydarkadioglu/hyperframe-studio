@@ -9,7 +9,8 @@ export type ViewName =
   | "projects"
   | "detail"
   | "settings"
-  | "templates";
+  | "templates"
+  | "dashboard";
 
 interface AppState {
   // navigation
