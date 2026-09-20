@@ -452,3 +452,65 @@ Task: QA assessment, Share/Embed feature, prompt suggestions, styling polish
 4. **Bulk actions** in projects view (multi-select delete/duplicate/export).
 5. **Keyboard shortcuts** — spacebar play/pause, arrow keys seek, in player.
 6. **Theming presets** — multiple accent color themes (violet/fuchsia, emerald/cyan, amber/rose) beyond light/dark.
+
+---
+Task ID: 7
+Agent: Main (Z.ai Code) — cron-triggered review (Europe/Istanbul 05:00) + user bug report
+Task: Fix stuck video generation + make scenes continuously animated (user: "videolar sürekli bir hareket olsun foto dursun gibi değil")
+
+## Current Project Status Assessment
+- User reported: video oluşturulamadı/yüklenemedi, bazı hatalar, ve sahneler statik (fotoğraf gibi duran) — sürekli hareketli olmalı.
+- Found 2 critical bugs + 1 UX issue:
+  1. **Stuck "generating" state**: After dev server hot-reloads (file edits), in-memory `running` Set resets but DB status stays "generating" → frontend polls forever, user waits indefinitely.
+  2. **Re-render blocked by stale status**: Render route refused re-render when `project.status === "generating"` even if no job was actually running.
+  3. **Static scenes**: Scene content had only entrance animations (one-shot), backgrounds/sat images froze after the intro. User explicitly wanted continuous motion.
+
+## Completed Modifications
+
+### Bug Fix 1: Stale "generating" detection (GET route)
+`src/app/api/projects/[id]/route.ts`:
+- Imported `isProjectRunning` from render route.
+- GET now checks: if status === "generating" AND no job actually running AND `updatedAt` older than 90s → auto-mark as "error" with a helpful Turkish message ("Üretim zaman aşımına uğradı... Tekrar deneyebilirsiniz."). UI then shows the retry button instead of polling forever.
+
+### Bug Fix 2: Allow re-render on stale "generating" (render route)
+`src/app/api/projects/[id]/render/route.ts`:
+- Exported `isProjectRunning(id)` helper.
+- POST no longer refuses re-render based on DB `status === "generating"` alone — only refuses if a job is ACTUALLY running in this process (`running.has(id)`). A stale "generating" (server restart) now allows re-render.
+
+### Bug Fix 3: PATCH supports status/errorMessage
+`src/app/api/projects/[id]/route.ts`:
+- PATCH now accepts `status` and `errorMessage` fields (was title/tone/style/scenes only). Allows manual recovery of stuck projects.
+
+### Feature: Continuously animated scenes (user request)
+`src/components/player/scene-renderer.tsx`:
+- Background gradient is now ALWAYS `animated-gradient` (continuous color shift) — was conditional on `!staticFrame`.
+- Added a second slow-drifting radial gradient overlay layer (`animated-gradient-slow`) for depth — always moving.
+- Image layer now ALWAYS uses `ken-burns` (continuous pan/zoom) regardless of scene.animation/type — previously only image-type or ken-burns-animation scenes got it; everything else was a frozen photo.
+- Added animated light streaks layer (`.streaks`) drifting diagonally — always moving.
+- FloatingShapes now active for 5 styles (modern/playful/vibrant/bold/elegant) instead of 3; increased count 6→8; added animationDelay per shape.
+- Added `ambientContent` motion: content breathes (scale 1→1.025→1, y 0→-4→0, 6s infinite) so text never feels frozen. Wrapped SceneContent in this motion when not staticFrame.
+
+`src/app/globals.css` — added continuous animation classes:
+- `@keyframes gradient-shift-slow` (20s, scale+rotate) + `.animated-gradient-slow`.
+- `@keyframes streak-drift` (18s linear) + `.streaks` (repeating diagonal white lines).
+- Enhanced `.ken-burns` → `@keyframes ken-burns-rich` (4-keyframe multi-axis: scale + translate in 4 directions, 16s) — more dynamic than the old 3-keyframe version.
+
+### Feature: Player keyboard shortcuts + speed + loop (from prior work, kept)
+- Already added in prior task: Space/K play, ←/→ 3s, J/L 10s, M mute, F fullscreen, C captions, R loop, ,/. speed, 0-9 seek, Home/End. Speed dropdown (0.5x-2x), loop toggle, keyboard hint overlay. Verified working.
+
+## Verification Results
+- `bun run lint` → 0 errors.
+- Stuck project (cmuaaxoi...): was "generating" forever → GET auto-detected stale → marked "error" with retry message → user clicked "Tekrar dene" → re-render succeeded → now "ready" (5 scenes, audio, subtitles, thumbnail).
+- Second project (cmua8rt3...): remains "ready".
+- agent-browser on ready project: ken-burns=1, animated-gradient=7, animated-gradient-slow=1, streaks=1, floating-shapes=48, audio present. Play works (audioTime=4s, paused=false). Screenshot saved /tmp/final-player.png.
+- Error UI confirmed: "Üretim başarısız oldu" + timeout message + "Tekrar dene" button.
+
+## Unresolved Issues / Risks
+- Hot-reload during a background generation still kills the in-flight job (Next.js dev limitation). Mitigation: stale-detection now recovers within 90s and shows retry. For production (no hot-reload) this is a non-issue.
+- Image generation is the slowest step (~15-20s per scene × N scenes). Could parallelize or add per-scene progress in a future phase.
+
+## Priority Recommendations for Next Phase
+1. **Per-scene progress** during generation (show which scene's image is being generated) — improves perceived performance.
+2. **Accent theme switcher UI** + **bulk actions** (was planned but subagent dispatch failed due to context cancellation — re-dispatch next round).
+3. **MP4 export** via Playwright frame capture + ffmpeg.
+4. **Real external provider integration** (OpenAI/Claude/ElevenLabs when user supplies keys).
