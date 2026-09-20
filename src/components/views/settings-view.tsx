@@ -11,7 +11,11 @@ import {
   CheckCircle2,
   Cpu,
   AudioLines,
+  Palette,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   LLM_PROVIDERS,
   TTS_PROVIDERS,
@@ -46,6 +50,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AccentPickerInline } from "@/components/app/accent-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -150,6 +155,32 @@ export function SettingsView() {
           Kaydet
         </Button>
       </header>
+
+      {/* Appearance — theme color + dark/light */}
+      <Card className="glass card-glow shine-on-hover overflow-hidden relative">
+        <div className="h-1 w-full accent-gradient" aria-hidden />
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg accent-gradient text-white shadow-md">
+              <Palette className="size-4" />
+            </span>
+            <div>
+              <CardTitle className="text-base">Görünüm</CardTitle>
+              <CardDescription>
+                Tema rengi tüm vurgulara uygulanır. Aydınlık/koyu modu ayrıca
+                değiştir.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label>Tema Rengi</Label>
+            <AccentPickerInline />
+          </div>
+          <DarkLightToggle />
+        </CardContent>
+      </Card>
 
       {/* Local defaults */}
       <Card>
@@ -278,6 +309,49 @@ interface ProviderCardProps {
   onChange: (patch: Partial<ProviderSettings[string]>) => void;
 }
 
+// In-page dark/light toggle for the Appearance section
+function DarkLightToggle() {
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const isDark = mounted ? (resolvedTheme ?? theme) === "dark" : true;
+  return (
+    <div className="space-y-2">
+      <Label>Aydınlık/Koyu Mod</Label>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant={isDark ? "ghost" : "default"}
+          onClick={() => setTheme("light")}
+          className={cn(
+            "min-h-[40px] flex-1",
+            !isDark
+              ? "accent-gradient border-0 text-white shadow-md"
+              : "border-border"
+          )}
+        >
+          <Sun className="size-4" />
+          Aydınlık
+        </Button>
+        <Button
+          type="button"
+          variant={isDark ? "default" : "ghost"}
+          onClick={() => setTheme("dark")}
+          className={cn(
+            "min-h-[40px] flex-1",
+            isDark
+              ? "accent-gradient border-0 text-white shadow-md"
+              : "border-border"
+          )}
+        >
+          <Moon className="size-4" />
+          Koyu
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Provider emoji/logo tile lookup
 function providerEmoji(id: string, name: string): string {
   const map: Record<string, string> = {
@@ -312,7 +386,7 @@ function ProviderCard({
     <Card
       className={cn(
         "glass card-glow shine-on-hover card-hover-lift overflow-hidden relative",
-        enabled ? "border-fuchsia-500/30" : "",
+        enabled && "accent-border",
         isBuiltIn && "pulse-glow"
       )}
     >
@@ -320,7 +394,7 @@ function ProviderCard({
       {enabled && (
         <span
           aria-hidden
-          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:100%_200%]"
+          className="absolute left-0 top-0 bottom-0 w-1 accent-gradient-br animated-gradient-x bg-[length:100%_200%]"
         />
       )}
       <div

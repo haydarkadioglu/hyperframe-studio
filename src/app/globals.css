@@ -463,3 +463,219 @@
 .ring-rotate {
   animation: ring-rotate 12s linear infinite;
 }
+
+/* ===== Accent theme presets ===== */
+/* Default (violet) — applies when no data-accent or data-accent="violet" */
+:root,
+[data-accent="violet"] {
+  --accent-1: #7c3aed;
+  --accent-2: #d946ef;
+  --accent-3: #ec4899;
+  --accent-rgb-1: 124 58 237;
+  --accent-rgb-2: 217 70 239;
+  --accent-rgb-3: 236 72 153;
+}
+[data-accent="emerald"] {
+  --accent-1: #059669;
+  --accent-2: #10b981;
+  --accent-3: #14b8a6;
+  --accent-rgb-1: 5 150 105;
+  --accent-rgb-2: 16 185 129;
+  --accent-rgb-3: 20 184 166;
+}
+[data-accent="amber"] {
+  --accent-1: #f59e0b;
+  --accent-2: #f97316;
+  --accent-3: #ef4444;
+  --accent-rgb-1: 245 158 11;
+  --accent-rgb-2: 249 115 22;
+  --accent-rgb-3: 239 68 68;
+}
+[data-accent="rose"] {
+  --accent-1: #f43f5e;
+  --accent-2: #ec4899;
+  --accent-3: #d946ef;
+  --accent-rgb-1: 244 63 94;
+  --accent-rgb-2: 236 72 153;
+  --accent-rgb-3: 217 70 239;
+}
+[data-accent="cyan"] {
+  --accent-1: #06b6d4;
+  --accent-2: #0ea5e9;
+  --accent-3: #3b82f6;
+  --accent-rgb-1: 6 182 212;
+  --accent-rgb-2: 14 165 233;
+  --accent-rgb-3: 59 130 246;
+}
+[data-accent="fuchsia"] {
+  --accent-1: #c026d3;
+  --accent-2: #a21caf;
+  --accent-3: #86198f;
+  --accent-rgb-1: 192 38 211;
+  --accent-rgb-2: 162 28 175;
+  --accent-rgb-3: 134 25 143;
+}
+
+/* Accent gradient utility (uses CSS vars so it recolors with the active preset) */
+.accent-gradient {
+  background-image: linear-gradient(to right, var(--accent-1), var(--accent-2), var(--accent-3));
+}
+.accent-gradient-br {
+  background-image: linear-gradient(to bottom right, var(--accent-1), var(--accent-2), var(--accent-3));
+}
+.accent-text {
+  color: transparent;
+  background: linear-gradient(to right, var(--accent-1), var(--accent-2), var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.accent-ring {
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent-2) 40%, transparent);
+}
+.accent-border {
+  border-color: color-mix(in oklch, var(--accent-2) 35%, transparent);
+}
+.accent-glow {
+  box-shadow: 0 10px 28px -18px color-mix(in oklch, var(--accent-1) 35%, transparent);
+}
+.accent-bg-soft {
+  background-color: color-mix(in oklch, var(--accent-1) 12%, transparent);
+}
+.accent-text-soft {
+  color: color-mix(in oklch, var(--accent-1) 85%, var(--foreground));
+}
+
+/* Accent dot pulse */
+@keyframes accent-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+.accent-dot {
+  background: var(--accent-2);
+  animation: accent-pulse 2s ease-in-out infinite;
+}
+
+/* =========================================================
+   Task 7-fe additions: wave, pop-in, badge-pop,
+   divider-gradient, hover-scale-105, glow-text, accent-mesh
+   ========================================================= */
+
+/* Horizontal wave (decorative lines) */
+@keyframes wave {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.wave-line {
+  background-size: 200% 100%;
+  animation: wave 5s ease-in-out infinite;
+}
+
+/* Pop-in entrance (badge / tag) */
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.badge-pop {
+  animation: pop-in 0.3s ease-out;
+}
+
+/* 1px gradient divider line that recolors with the active accent */
+.divider-gradient {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    color-mix(in oklch, var(--accent-2) 65%, transparent) 50%,
+    transparent 100%
+  );
+}
+
+/* Subtle hover scale */
+.hover-scale-105 {
+  transition: transform 220ms ease;
+}
+.hover-scale-105:hover {
+  transform: scale(1.05);
+}
+
+/* Glowing text (recolors with the active accent) */
+.glow-text {
+  text-shadow: 0 0 20px color-mix(in oklch, var(--accent-2) 40%, transparent);
+}
+
+/* Accent mesh — like mesh-radial but uses the active accent vars so it recolors */
+.accent-mesh {
+  background-image:
+    radial-gradient(at 20% 20%, color-mix(in oklch, var(--accent-1) 18%, transparent) 0px, transparent 38%),
+    radial-gradient(at 80% 14%, color-mix(in oklch, var(--accent-2) 18%, transparent) 0px, transparent 38%),
+    radial-gradient(at 65% 80%, color-mix(in oklch, var(--accent-3) 16%, transparent) 0px, transparent 38%),
+    radial-gradient(at 18% 70%, color-mix(in oklch, var(--accent-1) 14%, transparent) 0px, transparent 38%);
+  background-repeat: no-repeat;
+}
+
+/* Player stage ring glow — recolors with the active accent */
+.accent-player-glow {
+  transition: box-shadow 320ms ease, transform 320ms ease;
+}
+.accent-player-glow:hover {
+  box-shadow:
+    0 30px 60px -30px color-mix(in oklch, var(--accent-2) 55%, transparent),
+    0 18px 36px -22px color-mix(in oklch, var(--accent-1) 35%, transparent);
+}
+
+/* Hover variant of accent-ring (for card hover/selected feedback) */
+.accent-ring-hover {
+  transition: box-shadow 240ms ease;
+}
+.accent-ring-hover:hover {
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent-2) 45%, transparent);
+}
+
+/* ===== Continuous scene animations (so videos never feel like still photos) ===== */
+
+/* Slow drifting gradient overlay layer */
+@keyframes gradient-shift-slow {
+  0%   { background-position: 0% 50%; transform: scale(1) rotate(0deg); }
+  50%  { background-position: 100% 50%; transform: scale(1.08) rotate(2deg); }
+  100% { background-position: 0% 50%; transform: scale(1) rotate(0deg); }
+}
+.animated-gradient-slow {
+  background-size: 400% 400%;
+  animation: gradient-shift-slow 20s ease-in-out infinite;
+  will-change: background-position, transform;
+}
+
+/* Diagonal light streaks drifting across the scene */
+@keyframes streak-drift {
+  0%   { transform: translateX(-30%) translateY(0); }
+  100% { transform: translateX(30%) translateY(-10%); }
+}
+.streaks {
+  background-image: repeating-linear-gradient(
+    115deg,
+    transparent 0px,
+    transparent 80px,
+    rgba(255, 255, 255, 0.5) 81px,
+    rgba(255, 255, 255, 0.5) 82px,
+    transparent 83px,
+    transparent 160px
+  );
+  animation: streak-drift 18s linear infinite;
+  will-change: transform;
+}
+
+/* Enhanced ken-burns with multi-axis motion (more dynamic than the basic one) */
+@keyframes ken-burns-rich {
+  0%   { transform: scale(1) translate(0, 0); }
+  25%  { transform: scale(1.1) translate(-3%, 1%); }
+  50%  { transform: scale(1.15) translate(2%, -2%); }
+  75%  { transform: scale(1.08) translate(3%, 2%); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+.ken-burns {
+  animation: ken-burns-rich 16s ease-in-out infinite;
+  will-change: transform;
+}

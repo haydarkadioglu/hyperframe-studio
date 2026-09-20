@@ -67,7 +67,7 @@ function variantsFor(animation: Scene["animation"]) {
 }
 
 const FloatingShapes: React.FC<{ style: VideoStyle }> = ({ style }) => {
-  if (style !== "modern" && style !== "playful" && style !== "vibrant")
+  if (style !== "modern" && style !== "playful" && style !== "vibrant" && style !== "bold" && style !== "elegant")
     return null;
 
   const colors =
@@ -75,12 +75,16 @@ const FloatingShapes: React.FC<{ style: VideoStyle }> = ({ style }) => {
       ? ["#fbbf24", "#fb923c", "#f43f5e"]
       : style === "vibrant"
       ? ["#34d399", "#14b8a6", "#06b6d4"]
+      : style === "bold"
+      ? ["#f43f5e", "#ef4444", "#f97316"]
+      : style === "elegant"
+      ? ["#fbbf24", "#f59e0b", "#d97706"]
       : ["#a78bfa", "#e879f9", "#f472b6"];
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 6 }).map((_, i) => {
-        const size = 40 + ((i * 17) % 80);
+      {Array.from({ length: 8 }).map((_, i) => {
+        const size = 40 + ((i * 17) % 90);
         return (
           <div
             key={i}
@@ -94,12 +98,26 @@ const FloatingShapes: React.FC<{ style: VideoStyle }> = ({ style }) => {
               left: `${(i * 23) % 100}%`,
               top: `${(i * 37) % 100}%`,
               background: colors[i % colors.length],
+              animationDelay: `${(i * 0.7) % 4}s`,
             }}
           />
         );
       })}
     </div>
   );
+};
+
+// Continuous ambient motion for content: a slow breathing scale + drift so scenes never feel "frozen".
+const ambientContent = {
+  animate: {
+    scale: [1, 1.025, 1],
+    y: [0, -4, 0],
+  },
+  transition: {
+    duration: 6,
+    ease: "easeInOut" as const,
+    repeat: Infinity,
+  },
 };
 
 export const SceneRenderer: React.FC<SceneRendererProps> = ({
@@ -121,27 +139,35 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
 
   return (
     <div className="scene-stage absolute inset-0">
-      {/* Background gradient */}
+      {/* Background gradient — ALWAYS animated (continuous color shift) */}
       <div
         className={cn(
           "absolute inset-0 bg-gradient-to-br",
           gradient,
-          !staticFrame && "animated-gradient"
+          "animated-gradient"
         )}
       />
 
-      {/* Optional image layer with ken-burns */}
+      {/* Second slow-drifting gradient layer for depth (always moving) */}
+      {!staticFrame && (
+        <div
+          className="absolute inset-0 opacity-40 mix-blend-overlay animated-gradient-slow"
+          style={{
+            backgroundImage:
+              "radial-gradient(at 30% 30%, rgba(255,255,255,0.18), transparent 45%), radial-gradient(at 70% 70%, rgba(0,0,0,0.25), transparent 45%)",
+          }}
+        />
+      )}
+
+      {/* Optional image layer — ALWAYS ken-burns (continuous pan/zoom) so it never feels like a still photo */}
       {hasImage && (
         <div className="absolute inset-0 overflow-hidden">
           <img
             src={scene.imageUrl}
             alt=""
             className={cn(
-              "h-full w-full object-cover",
-              !staticFrame &&
-                (scene.animation === "ken-burns" || scene.type === "image"
-                  ? "ken-burns"
-                  : "transition-transform duration-700")
+              "h-full w-full object-cover will-change-transform",
+              !staticFrame && "ken-burns"
             )}
           />
           {/* legibility scrim */}
@@ -150,13 +176,20 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
         </div>
       )}
 
-      {/* Floating decorative shapes for selected styles */}
+      {/* Floating decorative shapes — always animate (more styles now) */}
       <FloatingShapes style={style} />
+
+      {/* Animated light streaks (always moving) for extra liveliness */}
+      {!staticFrame && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -inset-[10%] opacity-[0.06] streaks" />
+        </div>
+      )}
 
       {/* Subtle vignette */}
       <div className="pointer-events-none absolute inset-0 shadow-[inset_0_0_180px_rgba(0,0,0,0.55)]" />
 
-      {/* Content */}
+      {/* Content — entrance variant + continuous ambient breathing so it's never frozen */}
       <div className="absolute inset-0 grid place-items-center p-8 sm:p-12">
         <AnimatePresence mode="wait">
           <motion.div
@@ -167,7 +200,16 @@ export const SceneRenderer: React.FC<SceneRendererProps> = ({
             transition={{ duration: 0.5, ease: "easeOut" }}
             className="w-full max-w-4xl"
           >
-            <SceneContent scene={scene} accent={accent} />
+            {staticFrame ? (
+              <SceneContent scene={scene} accent={accent} />
+            ) : (
+              <motion.div
+                animate={ambientContent.animate}
+                transition={ambientContent.transition}
+              >
+                <SceneContent scene={scene} accent={accent} />
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

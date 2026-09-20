@@ -15,6 +15,11 @@ import type { Scene, VideoProject } from "@/lib/types";
 // Background jobs tracker (in-memory; fine for single dev instance)
 const running = new Set<string>();
 
+// Exported so the GET route can detect stale "generating" state after a server restart
+export function isProjectRunning(id: string): boolean {
+  return running.has(id);
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -25,7 +30,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const project = await getProject(id);
     if (!project) return NextResponse.json({ error: "not found" }, { status: 404 });
-    if (project.status === "generating" || running.has(id)) {
+    // Only refuse if a job is ACTUALLY running in this process.
+    // A "generating" DB status with no running job means a stale/stuck state (e.g. server restart) → allow re-render.
+    if (running.has(id)) {
       return NextResponse.json({ project, alreadyRunning: true });
     }
 

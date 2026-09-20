@@ -2,12 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProject, deleteProject, updateProject } from "@/lib/project-store";
 import { buildSRT } from "@/lib/subtitles";
 import type { Scene } from "@/lib/types";
+import { isProjectRunning } from "./render/route";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const project = await getProject(id);
     if (!project) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+    // Stale-detection: if the DB says "generating" but no job is actually running in this process
+    // (e.g. after a dev server restart) AND it's been more than 90 seconds since the last update,
+    // mark the project as "error" so the UI shows a retry option instead of polling forever.
+    if (project.status === "generating" && !isProjectRunning(id)) {
+      const updated = new Date(project.updatedAt).getTime();
+      const ageMs = Date.now() - (isNaN(updated) ? 0 : updated);
+      if (ageMs > 90_000) {
+        const fixed = await updateProject(id, {
+          status: "error",
+          errorMessage: "Üretim zaman aşımına uğradı (sunucu yeniden başlatılması veya beklenmeyen kesinti). Tekrar deneyebilirsiniz.",
+        });
+        return NextResponse.json({ project: fixed });
+      }
+    }
+
     return NextResponse.json({ project });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -38,11 +55,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       tone?: string;
       style?: string;
       scenes?: Scene[];
+      status?: string;
+      errorMessage?: string | null;
     } = {};
 
     if (typeof body.title === "string" && body.title.trim()) patch.title = body.title.trim().slice(0, 200);
     if (typeof body.tone === "string") patch.tone = body.tone;
     if (typeof body.style === "string") patch.style = body.style;
+    if (typeof body.status === "string") patch.status = body.status;
+    if (body.errorMessage !== undefined) patch.errorMessage = body.errorMessage;
 
     let scenesChanged = false;
     if (Array.isArray(body.scenes)) {

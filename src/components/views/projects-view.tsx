@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpen,
   Play,
@@ -16,6 +16,11 @@ import {
   ArrowUpDown,
   Share2,
   Clapperboard,
+  CheckSquare,
+  X,
+  Download,
+  Square,
+  Check,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { MODE_MAP, STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
@@ -24,6 +29,8 @@ import {
   listProjects,
   deleteProject,
   duplicateProject,
+  getProject,
+  downloadTextFile,
   formatDuration,
   timeAgo,
   type ApiError,
@@ -66,6 +73,7 @@ import { cn } from "@/lib/utils";
 type FilterKey = "all" | "ready" | "generating" | "draft";
 type SortKey = "newest" | "oldest" | "duration" | "title";
 type ViewMode = "grid" | "list";
+type BulkBusy = "duplicate" | "delete" | "export" | null;
 
 const STATUS_META: Record<
   ProjectStatus,
@@ -90,6 +98,12 @@ export function ProjectsView() {
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
   const [shareProject, setShareProject] = React.useState<VideoProject | null>(null);
+
+  // Bulk selection state
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = React.useState<BulkBusy>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -169,6 +183,105 @@ export function ProjectsView() {
     }
   };
 
+  // ---------- Bulk actions ----------
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((p) => p.id)));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const selectedList = React.useMemo(
+    () => projects.filter((p) => selectedIds.has(p.id)),
+    [projects, selectedIds]
+  );
+
+  const handleBulkDuplicate = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("duplicate");
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        await duplicateProject(id);
+      }
+      const fresh = await listProjects();
+      setProjects(fresh);
+      toast.success(`${ids.length} proje kopyalandı`, {
+        description: "Yeni taslaklar oluşturuldu.",
+      });
+      exitSelectMode();
+    } catch (e: any) {
+      toast.error("Toplu kopyalama hatası", { description: e?.message });
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("delete");
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        await deleteProject(id);
+      }
+      const fresh = await listProjects();
+      setProjects(fresh);
+      toast.success(`${ids.length} proje silindi`);
+      exitSelectMode();
+    } catch (e: any) {
+      toast.error("Toplu silme hatası", { description: e?.message });
+    } finally {
+      setBulkBusy(null);
+      setBulkDeleteOpen(false);
+    }
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("export");
+    try {
+      const ids = Array.from(selectedIds);
+      const data = await Promise.all(
+        ids.map((id) => getProject(id).catch(() => null))
+      );
+      const clean = data.filter(Boolean);
+      if (clean.length === 0) {
+        toast.error("Dışa aktarım başarısız", {
+          description: "Seçili projeler yüklenemedi.",
+        });
+        return;
+      }
+      const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
+      downloadTextFile(
+        `hyperframe-projects-${ts}.json`,
+        JSON.stringify(clean, null, 2),
+        "application/json"
+      );
+      toast.success(`${clean.length} proje dışa aktarıldı`);
+      exitSelectMode();
+    } catch (e: any) {
+      toast.error("Dışa aktarım hatası", { description: e?.message });
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <header className="relative overflow-hidden">
@@ -186,20 +299,45 @@ export function ProjectsView() {
               Oluşturduğun tüm videolar burada.
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setWizard({ step: 0 });
-              go("create");
-            }}
-            className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
-          >
-            <Wand2 className="size-4" />
-            Yeni Video
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              variant={selectMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              className={cn(
+                "min-h-[44px]",
+                selectMode && "accent-gradient border-0 text-white shadow-md"
+              )}
+            >
+              {selectMode ? (
+                <>
+                  <X className="size-4" />
+                  Seçimden Çık
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="size-4" />
+                  Toplu Seç
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => {
+                setWizard({ step: 0 });
+                go("create");
+              }}
+              className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
+            >
+              <Wand2 className="size-4" />
+              Yeni Video
+            </Button>
+          </div>
         </div>
+        {/* Accent-aware divider */}
+        <div className="divider-gradient mt-4" aria-hidden />
       </header>
 
-      {/* Search + sort + view toggle */}
+      {/* Search + sort + view toggle + (optional) select-all */}
       <div className="flex flex-col md:flex-row gap-3 md:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -211,6 +349,21 @@ export function ProjectsView() {
           />
         </div>
         <div className="flex items-center gap-2">
+          {selectMode && filtered.length > 0 && (
+            <button
+              onClick={selectAllVisible}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 h-9 text-sm font-medium hover:bg-accent transition-colors"
+            >
+              {selectedIds.size === filtered.length ? (
+                <Check className="size-4 text-emerald-500" />
+              ) : (
+                <Square className="size-4 text-muted-foreground" />
+              )}
+              {selectedIds.size === filtered.length
+                ? "Seçimi Temizle"
+                : "Tümünü Seç"}
+            </button>
+          )}
           <div className="flex items-center gap-1.5">
             <ArrowUpDown className="size-3.5 text-muted-foreground" />
             <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
@@ -295,7 +448,7 @@ export function ProjectsView() {
                 <div className="orb orb-sm bg-violet-500/30 -top-6 -left-6" />
                 <div className="orb orb-sm bg-fuchsia-500/25 -bottom-8 -right-6" />
                 <div className="orb orb-sm bg-pink-500/20 top-1/3 left-1/2" />
-                <div className="relative grid size-24 place-items-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-2xl shadow-fuchsia-500/30 pulse-glow">
+                <div className="relative grid size-24 place-items-center rounded-full accent-gradient text-white shadow-2xl shadow-fuchsia-500/30 pulse-glow">
                   <Clapperboard className="size-10" />
                 </div>
                 <div className="relative">
@@ -332,6 +485,9 @@ export function ProjectsView() {
                   onDuplicate={() => handleDuplicate(p)}
                   onShare={() => setShareProject(p)}
                   duplicating={duplicatingId === p.id}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(p.id)}
+                  onToggleSelect={() => toggleSelect(p.id)}
                 />
               ))}
             </div>
@@ -347,6 +503,9 @@ export function ProjectsView() {
                   onDuplicate={() => handleDuplicate(p)}
                   onShare={() => setShareProject(p)}
                   duplicating={duplicatingId === p.id}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(p.id)}
+                  onToggleSelect={() => toggleSelect(p.id)}
                 />
               ))}
             </div>
@@ -389,6 +548,43 @@ export function ProjectsView() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Bulk delete confirm */}
+      <AlertDialog
+        open={bulkDeleteOpen}
+        onOpenChange={(o) => !o && setBulkDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedIds.size} proje silinsin mi?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Seçili projeler kalıcı olarak silinecek. Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy === "delete"}>
+              İptal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleBulkDelete();
+              }}
+              disabled={bulkBusy === "delete"}
+              className="bg-rose-500 hover:bg-rose-600 text-white"
+            >
+              {bulkBusy === "delete" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Hepsini Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Share dialog (controlled) */}
       {shareProject && (
         <ShareDialog
@@ -397,6 +593,97 @@ export function ProjectsView() {
           onOpenChange={(o) => !o && setShareProject(null)}
         />
       )}
+
+      {/* Bulk action bar — sticky bottom, accent-aware */}
+      <AnimatePresence>
+        {selectMode && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] sm:w-auto max-w-3xl"
+          >
+            <div className="glass-strong rounded-2xl border border-border/60 shadow-2xl px-4 py-3 flex items-center gap-2 flex-wrap justify-center accent-glow">
+              <span className="inline-flex items-center gap-2 text-sm font-medium">
+                <span className="grid size-6 place-items-center rounded-md accent-gradient text-white">
+                  <Check className="size-3.5" />
+                </span>
+                <span className="accent-text font-semibold tabular-nums">
+                  {selectedIds.size}
+                </span>
+                <span className="text-muted-foreground">seçili</span>
+              </span>
+              <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const first = selectedList[0];
+                  if (first) {
+                    exitSelectMode();
+                    go("detail", first.id);
+                  }
+                }}
+                className="min-h-[36px]"
+                title="İlk seçili projeyi aç"
+              >
+                <Play className="size-4" />
+                Aç
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkDuplicate}
+                disabled={bulkBusy !== null}
+                className="min-h-[36px]"
+              >
+                {bulkBusy === "duplicate" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+                Kopyala
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleBulkExport}
+                disabled={bulkBusy !== null}
+                className="min-h-[36px]"
+              >
+                {bulkBusy === "export" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+                Dışa Aktar
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setBulkDeleteOpen(true)}
+                disabled={bulkBusy !== null}
+                className="min-h-[36px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
+              >
+                <Trash2 className="size-4" />
+                Sil
+              </Button>
+              <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={exitSelectMode}
+                className="min-h-[36px] text-muted-foreground"
+                aria-label="İptal"
+              >
+                <X className="size-4" />
+                İptal
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -441,6 +728,37 @@ function ProjectThumbnail({
   );
 }
 
+function SelectCheckbox({
+  checked,
+  onToggle,
+  className,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onToggle();
+      }}
+      aria-label={checked ? "Seçimi kaldır" : "Seç"}
+      className={cn(
+        "grid place-items-center size-6 rounded-md border-2 transition-all",
+        checked
+          ? "accent-gradient border-transparent text-white shadow-md accent-border"
+          : "border-border bg-background/80 backdrop-blur-sm hover:border-foreground/40",
+        className
+      )}
+    >
+      {checked && <Check className="size-4" />}
+    </button>
+  );
+}
+
 function ProjectCard({
   project,
   index,
@@ -449,6 +767,9 @@ function ProjectCard({
   onDuplicate,
   onShare,
   duplicating,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   project: VideoProject;
   index: number;
@@ -457,6 +778,9 @@ function ProjectCard({
   onDuplicate: () => void;
   onShare: () => void;
   duplicating: boolean;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const modeInfo = MODE_MAP[project.mode];
   const langInfo = LANGUAGE_MAP[project.language];
@@ -468,8 +792,29 @@ function ProjectCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
     >
-      <Card className="glass card-glow shine-on-hover card-hover-lift overflow-hidden h-full group relative hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30">
-        <button onClick={onOpen} className="block w-full text-left relative">
+      <Card
+        className={cn(
+          "glass card-glow shine-on-hover card-hover-lift overflow-hidden h-full group relative",
+          "hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30",
+          selectMode && "cursor-pointer",
+          selected && "accent-border ring-1 ring-foreground/10"
+        )}
+        onClick={selectMode ? onToggleSelect : undefined}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            if (selectMode) {
+              e.preventDefault();
+              onToggleSelect();
+            } else {
+              onOpen();
+            }
+          }}
+          className="block w-full text-left relative"
+          tabIndex={selectMode ? -1 : 0}
+          aria-hidden={selectMode}
+        >
           <div className="relative aspect-video overflow-hidden bg-muted">
             <ProjectThumbnail
               project={project}
@@ -479,23 +824,32 @@ function ProjectCard({
             {/* gradient overlay on hover (intensifies) */}
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-tr from-fuchsia-500/20 via-transparent to-violet-500/20" />
 
-            {/* Play overlay (scales in) */}
-            <div className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <motion.div
-                initial={{ scale: 0.4 }}
-                whileHover={{ scale: 1.1 }}
-                className="size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl group-hover:animate-pulse"
-              >
-                <Play className="size-6 text-white fill-white translate-x-0.5" />
-              </motion.div>
-            </div>
+            {/* Play overlay (scales in) — hidden in select mode */}
+            {!selectMode && (
+              <div className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <motion.div
+                  initial={{ scale: 0.4 }}
+                  whileHover={{ scale: 1.1 }}
+                  className="size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl group-hover:animate-pulse"
+                >
+                  <Play className="size-6 text-white fill-white translate-x-0.5" />
+                </motion.div>
+              </div>
+            )}
 
-            {/* Status badge — generating pulses */}
-            <div className="absolute top-2 left-2">
+            {/* Bulk-select checkbox — top-left corner */}
+            {selectMode && (
+              <div className="absolute top-2 left-2 z-10">
+                <SelectCheckbox checked={selected} onToggle={onToggleSelect} />
+              </div>
+            )}
+
+            {/* Status badge — generating pulses; badge-pop entrance */}
+            <div className={cn("absolute top-2", selectMode ? "right-2" : "left-2")}>
               <Badge
                 variant="outline"
                 className={cn(
-                  "backdrop-blur-md bg-black/40 border-0 text-white",
+                  "backdrop-blur-md bg-black/40 border-0 text-white badge-pop",
                   status.cls,
                   project.status === "generating" && "pulse-glow"
                 )}
@@ -533,50 +887,52 @@ function ProjectCard({
           <div className="text-xs text-muted-foreground">
             {timeAgo(project.createdAt)} · {project.sceneCount} sahne
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onOpen}
-              className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
-            >
-              Aç
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onShare}
-              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-              aria-label="Paylaş"
-              title="Paylaş"
-            >
-              <Share2 className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onDuplicate}
-              disabled={duplicating}
-              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-              aria-label="Kopyala"
-              title="Kopyala"
-            >
-              {duplicating ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onDelete}
-              className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-              aria-label="Sil"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
+          {!selectMode && (
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onOpen}
+                className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
+              >
+                Aç
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onShare}
+                className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+                aria-label="Paylaş"
+                title="Paylaş"
+              >
+                <Share2 className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onDuplicate}
+                disabled={duplicating}
+                className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+                aria-label="Kopyala"
+                title="Kopyala"
+              >
+                {duplicating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onDelete}
+                className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                aria-label="Sil"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -591,6 +947,9 @@ function ProjectRow({
   onDuplicate,
   onShare,
   duplicating,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   project: VideoProject;
   index: number;
@@ -599,6 +958,9 @@ function ProjectRow({
   onDuplicate: () => void;
   onShare: () => void;
   duplicating: boolean;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const modeInfo = MODE_MAP[project.mode];
   const langInfo = LANGUAGE_MAP[project.language];
@@ -610,17 +972,40 @@ function ProjectRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.25) }}
     >
-      <Card className="glass card-glow group hover:border-fuchsia-500/40 relative overflow-hidden">
+      <Card
+        className={cn(
+          "glass card-glow group hover:border-fuchsia-500/40 relative overflow-hidden",
+          selectMode && "cursor-pointer",
+          selected && "accent-border ring-1 ring-foreground/10"
+        )}
+        onClick={selectMode ? onToggleSelect : undefined}
+      >
         {/* Left gradient accent bar that appears on hover */}
         <span
           aria-hidden
           className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"
         />
         <CardContent className="py-3 flex items-center gap-4 pl-5">
+          {/* Bulk-select checkbox in select mode */}
+          {selectMode && (
+            <SelectCheckbox
+              checked={selected}
+              onToggle={onToggleSelect}
+              className="shrink-0"
+            />
+          )}
           <button
-            onClick={onOpen}
+            onClick={(e) => {
+              if (selectMode) {
+                e.preventDefault();
+                onToggleSelect();
+              } else {
+                onOpen();
+              }
+            }}
             className="relative shrink-0 size-20 rounded-lg overflow-hidden bg-muted group/thumb"
             aria-label="Aç"
+            tabIndex={selectMode ? -1 : 0}
           >
             <ProjectThumbnail
               project={project}
@@ -630,12 +1015,23 @@ function ProjectRow({
               <Play className="size-5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity fill-white translate-x-0.5" />
             </div>
           </button>
-          <button onClick={onOpen} className="min-w-0 flex-1 text-left">
+          <button
+            onClick={(e) => {
+              if (selectMode) {
+                e.preventDefault();
+                onToggleSelect();
+              } else {
+                onOpen();
+              }
+            }}
+            className="min-w-0 flex-1 text-left"
+            tabIndex={selectMode ? -1 : 0}
+          >
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[10px] border",
+                  "text-[10px] border badge-pop",
                   status.cls,
                   project.status === "generating" && "pulse-glow"
                 )}
@@ -659,50 +1055,52 @@ function ProjectRow({
               {timeAgo(project.createdAt)} · {project.sceneCount} sahne · {formatDuration(project.durationSec)}
             </p>
           </button>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={onOpen}
-              className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
-            >
-              Aç
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onShare}
-              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-              aria-label="Paylaş"
-              title="Paylaş"
-            >
-              <Share2 className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onDuplicate}
-              disabled={duplicating}
-              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-              aria-label="Kopyala"
-              title="Kopyala"
-            >
-              {duplicating ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onDelete}
-              className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-              aria-label="Sil"
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </div>
+          {!selectMode && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={onOpen}
+                className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
+              >
+                Aç
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onShare}
+                className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+                aria-label="Paylaş"
+                title="Paylaş"
+              >
+                <Share2 className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onDuplicate}
+                disabled={duplicating}
+                className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+                aria-label="Kopyala"
+                title="Kopyala"
+              >
+                {duplicating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={onDelete}
+                className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                aria-label="Sil"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

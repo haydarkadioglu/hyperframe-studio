@@ -296,7 +296,7 @@ export function DetailView() {
           <Button
             size="sm"
             onClick={() => setShareOpen(true)}
-            className="min-h-[40px] btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 relative overflow-hidden"
+            className="min-h-[40px] accent-gradient text-white border-0 shine-on-hover shadow-lg shadow-fuchsia-500/30 relative overflow-hidden"
           >
             <Share2 className="size-4" />
             Paylaş
@@ -330,7 +330,7 @@ export function DetailView() {
       {/* Title + meta */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/30">
+          <Badge variant="outline" className="accent-bg-soft accent-text-soft accent-border">
             {MODE_MAP[project.mode]?.emoji} {MODE_MAP[project.mode]?.label}
           </Badge>
           <StatusBadge status={project.status} />
@@ -338,7 +338,7 @@ export function DetailView() {
             {timeAgo(project.createdAt)}
           </span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance accent-text glow-text">
           {project.title}
         </h1>
         <p className="text-sm text-muted-foreground line-clamp-2">
@@ -347,6 +347,7 @@ export function DetailView() {
       </div>
 
       {/* Body */}
+      <div className="divider-gradient" aria-hidden />
       {project.status === "generating" ? (
         <GeneratingView project={project} />
       ) : project.status === "error" ? (
@@ -623,14 +624,17 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
           {/* Decorative orb behind player */}
           <div className="orb orb-md bg-violet-500/30 -top-10 -left-10 -z-10" />
           <div className="orb orb-sm bg-fuchsia-500/25 -bottom-12 right-4 -z-10" />
-          {/* Gradient ring that subtly rotates on hover */}
-          <div className="group relative rounded-2xl p-[1.5px] bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-pink-500/40 overflow-hidden transition-shadow hover:shadow-[0_30px_60px_-30px_rgba(217,70,239,0.5)]">
+          {/* Gradient ring that subtly rotates on hover — recolors with accent */}
+          <div className="group relative rounded-2xl p-[1.5px] accent-gradient overflow-hidden accent-player-glow">
             <div className="absolute -inset-1 bg-gradient-to-r from-violet-500/30 via-fuchsia-500/20 to-pink-500/30 opacity-0 group-hover:opacity-100 blur-2xl transition-opacity pointer-events-none" />
             <div className="relative rounded-2xl overflow-hidden">
               <ScenePlayer project={project} />
             </div>
           </div>
         </div>
+
+        {/* Accent-aware divider between player and action bar */}
+        <div className="divider-gradient" aria-hidden />
 
         {/* Action bar */}
         <div className="flex flex-wrap gap-2">
@@ -655,7 +659,7 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
           <Button
             size="sm"
             onClick={onShare}
-            className="min-h-[40px] btn-gradient shine-on-hover shadow-md shadow-fuchsia-500/30 relative overflow-hidden ml-auto"
+            className="min-h-[40px] accent-gradient text-white border-0 shine-on-hover shadow-md shadow-fuchsia-500/30 relative overflow-hidden ml-auto"
           >
             <Share2 className="size-4" />
             Paylaş
@@ -665,6 +669,7 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
 
       {/* Right panel: scenes list + meta */}
       <div className="space-y-4">
+        <div className="divider-gradient lg:hidden" aria-hidden />
         <Card className="glass overflow-hidden">
           <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x" />
           <CardHeader>
@@ -698,7 +703,7 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
                     className={cn(
                       "text-left rounded-lg overflow-hidden border transition-all",
                       isActive
-                        ? "border-fuchsia-500 ring-2 ring-fuchsia-500/40 scale-[1.04] shadow-lg shadow-fuchsia-500/20"
+                        ? "accent-border ring-2 ring-fuchsia-500/40 scale-[1.04] shadow-lg shadow-fuchsia-500/20 accent-ring"
                         : "border-border hover:border-fuchsia-500/40 hover:-translate-y-0.5"
                     )}
                   >

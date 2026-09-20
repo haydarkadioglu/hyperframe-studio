@@ -230,7 +230,7 @@ export function TemplatesView() {
               onClick={() => applyTemplate(t)}
               className="text-left"
             >
-              <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30 relative">
+              <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group hover:border-fuchsia-500/50 accent-ring-hover relative">
                 {/* Taller gradient banner with decorative pattern */}
                 <div className="relative aspect-[3/1.6] overflow-hidden">
                   <div
@@ -278,7 +278,7 @@ export function TemplatesView() {
                   )}
                   {/* Slide-up "Kullan" CTA on hover */}
                   <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <div className="rounded-lg btn-gradient px-3 py-2 text-center text-sm font-semibold text-white shadow-lg flex items-center justify-center gap-1.5">
+                    <div className="rounded-lg accent-gradient px-3 py-2 text-center text-sm font-semibold text-white shadow-lg flex items-center justify-center gap-1.5">
                       Kullan
                       <ArrowRight className="size-3.5" />
                     </div>

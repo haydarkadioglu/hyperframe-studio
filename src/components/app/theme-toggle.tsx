@@ -4,6 +4,7 @@ import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { AccentPicker } from "./accent-picker";
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -13,22 +14,25 @@ export function ThemeToggle() {
   const isDark = mounted ? resolvedTheme === "dark" : true;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Tema değiştir"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="size-9 rounded-full"
-    >
-      {mounted ? (
-        isDark ? (
-          <Sun className="size-4 text-amber-300" />
+    <div className="flex items-center gap-1">
+      <AccentPicker />
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Tema değiştir"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        className="size-9 rounded-full"
+      >
+        {mounted ? (
+          isDark ? (
+            <Sun className="size-4 text-amber-300" />
+          ) : (
+            <Moon className="size-4 text-violet-600" />
+          )
         ) : (
-          <Moon className="size-4 text-violet-600" />
-        )
-      ) : (
-        <Sun className="size-4" />
-      )}
-    </Button>
+          <Sun className="size-4" />
+        )}
+      </Button>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { Sidebar, MobileNav } from "./sidebar";
 import { Topbar } from "./topbar";
 import { Footer } from "./footer";
 import { ThemeToggle } from "./theme-toggle";
+import { AccentPicker } from "./accent-picker";
 import { HomeView } from "@/components/views/home-view";
 import { CreateView } from "@/components/views/create-view";
 import { ProjectsView } from "@/components/views/projects-view";
@@ -17,7 +18,9 @@ import { DashboardView } from "@/components/views/dashboard-view";
 function DesktopThemeToggle() {
   return (
     <div className="hidden md:flex fixed bottom-4 right-4 z-40">
-      <div className="rounded-full border border-border/60 bg-background/80 backdrop-blur-md shadow-lg p-1">
+      <div className="rounded-full border border-border/60 bg-background/80 backdrop-blur-md shadow-lg p-1 flex items-center gap-0.5">
+        <AccentPicker />
+        <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
         <ThemeToggle />
       </div>
     </div>

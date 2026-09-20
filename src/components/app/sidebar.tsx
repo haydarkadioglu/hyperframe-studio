@@ -87,11 +87,11 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
-            {/* Animated gradient left-border bar for active */}
+            {/* Animated accent-aware left-border bar for active */}
             {active && (
               <span
                 aria-hidden
-                className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:100%_200%]"
+                className="absolute left-0 top-2 bottom-2 w-1 rounded-r accent-gradient animated-gradient-x bg-[length:100%_200%]"
               />
             )}
             {/* sliding bg on hover */}
@@ -105,8 +105,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               className={cn(
                 "relative grid size-8 place-items-center rounded-lg transition-all duration-200",
                 active
-                  ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30 pulse-glow"
-                  : "bg-muted text-muted-foreground group-hover:bg-gradient-to-br group-hover:from-violet-500 group-hover:to-fuchsia-500 group-hover:text-white group-hover:scale-110"
+                  ? "accent-gradient text-white shadow-md shadow-fuchsia-500/30 pulse-glow"
+                  : "bg-muted text-muted-foreground group-hover:accent-gradient group-hover:text-white group-hover:scale-110"
               )}
             >
               <Icon className="size-4 transition-transform group-hover:scale-110" />
@@ -132,7 +132,7 @@ function NewVideoButton({ onClick }: { onClick?: () => void }) {
         go("create");
         onClick?.();
       }}
-      className="w-full min-h-[44px] btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 border-0 relative overflow-hidden"
+      className="w-full min-h-[44px] accent-gradient text-white shine-on-hover shadow-lg shadow-fuchsia-500/30 border-0 relative overflow-hidden"
     >
       <Sparkles className="size-4" />
       Yeni Video
@@ -171,7 +171,7 @@ function SidebarStatsBadge() {
           </span>
           Toplam proje
         </span>
-        <span className="text-sm font-bold tabular-nums brand-gradient-text animated-gradient-x bg-[length:200%_100%] inline-block">
+        <span className="text-sm font-bold tabular-nums accent-text animated-gradient-x bg-[length:200%_100%] inline-block">
           {count}
         </span>
       </div>
@@ -190,12 +190,14 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         <NavList onNavigate={onNavigate} />
       </div>
       <SidebarStatsBadge />
-      <div className="rounded-xl border border-border/60 bg-muted/40 p-3">
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-medium text-foreground">Hyperframe Studio</span>{" "}
-          · z-ai-web-dev-sdk ile çalışır. LLM, TTS, VLM ve görsel üretimi yerleşik
-          olarak desteklenir.
-        </p>
+      <div className="rounded-xl border border-border/60 bg-muted/40 p-3 flex items-center justify-between gap-2">
+        <div className="flex-1">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-medium accent-text-soft">Hyperframe Studio</span>{" "}
+            · z-ai-web-dev-sdk ile çalışır. LLM, TTS, VLM ve görsel üretimi yerleşik
+            olarak desteklenir.
+          </p>
+        </div>
       </div>
     </div>
   );

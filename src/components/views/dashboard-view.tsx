@@ -53,9 +53,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const CHART_COLORS = [
-  "#7c3aed", // violet
-  "#d946ef", // fuchsia
-  "#ec4899", // pink
+  "var(--accent-1)", // violet (theme-aware)
+  "var(--accent-2)", // fuchsia (theme-aware)
+  "var(--accent-3)", // pink (theme-aware)
   "#f59e0b", // amber
   "#10b981", // emerald
   "#06b6d4", // cyan
@@ -144,7 +144,7 @@ export function DashboardView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 accent-mesh rounded-2xl">
       <Header />
 
       {/* KPI cards */}
@@ -185,6 +185,9 @@ export function DashboardView() {
         />
       </motion.div>
 
+      {/* Accent-aware divider between KPIs and charts */}
+      <div className="divider-gradient" aria-hidden />
+
       {/* Activity chart */}
       <Card className="glass relative overflow-hidden">
         <div className="orb orb-sm bg-violet-500/15 -top-10 -right-10" />
@@ -211,14 +214,14 @@ export function DashboardView() {
               >
                 <defs>
                   <linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#d946ef" stopOpacity={0.55} />
-                    <stop offset="50%" stopColor="#7c3aed" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--accent-2)" stopOpacity={0.55} />
+                    <stop offset="50%" stopColor="var(--accent-1)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="var(--accent-1)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="activityStroke" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#7c3aed" />
-                    <stop offset="50%" stopColor="#d946ef" />
-                    <stop offset="100%" stopColor="#ec4899" />
+                    <stop offset="0%" stopColor="var(--accent-1)" />
+                    <stop offset="50%" stopColor="var(--accent-2)" />
+                    <stop offset="100%" stopColor="var(--accent-3)" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -262,7 +265,7 @@ export function DashboardView() {
                   strokeWidth={2.5}
                   fill="url(#activityFill)"
                   dot={false}
-                  activeDot={{ r: 5, fill: "#d946ef", stroke: "#fff", strokeWidth: 2 }}
+                  activeDot={{ r: 5, fill: "var(--accent-2)", stroke: "#fff", strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -478,8 +481,7 @@ function KpiCard({
           <div className="flex items-start justify-between">
             <div
               className={cn(
-                "relative grid size-11 place-items-center rounded-xl bg-gradient-to-br text-white shadow-md",
-                gradient
+                "relative grid size-11 place-items-center rounded-xl accent-gradient text-white shadow-md"
               )}
             >
               <Icon className="size-5" />

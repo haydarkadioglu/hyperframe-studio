@@ -1,0 +1,711 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { motion } from "framer-motion";
+     5→import {
+     6→  FolderOpen,
+     7→  Play,
+     8→  Trash2,
+     9→  Wand2,
+    10→  Filter,
+    11→  Loader2,
+    12→  Search,
+    13→  Copy,
+    14→  LayoutGrid,
+    15→  List as ListIcon,
+    16→  ArrowUpDown,
+    17→  Share2,
+    18→  Clapperboard,
+    19→} from "lucide-react";
+    20→import { useApp } from "@/lib/store";
+    21→import { MODE_MAP, STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
+    22→import type { VideoProject, ProjectStatus } from "@/lib/types";
+    23→import {
+    24→  listProjects,
+    25→  deleteProject,
+    26→  duplicateProject,
+    27→  formatDuration,
+    28→  timeAgo,
+    29→  type ApiError,
+    30→} from "@/lib/api-client";
+    31→import {
+    32→  Card,
+    33→  CardContent,
+    34→} from "@/components/ui/card";
+    35→import { Button } from "@/components/ui/button";
+    36→import { Badge } from "@/components/ui/badge";
+    37→import { Input } from "@/components/ui/input";
+    38→import { Skeleton } from "@/components/ui/skeleton";
+    39→import {
+    40→  Tabs,
+    41→  TabsList,
+    42→  TabsTrigger,
+    43→  TabsContent,
+    44→} from "@/components/ui/tabs";
+    45→import {
+    46→  Select,
+    47→  SelectTrigger,
+    48→  SelectValue,
+    49→  SelectContent,
+    50→  SelectItem,
+    51→} from "@/components/ui/select";
+    52→import {
+    53→  AlertDialog,
+    54→  AlertDialogAction,
+    55→  AlertDialogCancel,
+    56→  AlertDialogContent,
+    57→  AlertDialogDescription,
+    58→  AlertDialogFooter,
+    59→  AlertDialogHeader,
+    60→  AlertDialogTitle,
+    61→} from "@/components/ui/alert-dialog";
+    62→import { ShareDialog } from "@/components/app/share-dialog";
+    63→import { toast } from "sonner";
+    64→import { cn } from "@/lib/utils";
+    65→
+    66→type FilterKey = "all" | "ready" | "generating" | "draft";
+    67→type SortKey = "newest" | "oldest" | "duration" | "title";
+    68→type ViewMode = "grid" | "list";
+    69→
+    70→const STATUS_META: Record<
+    71→  ProjectStatus,
+    72→  { label: string; cls: string; dot: string }
+    73→> = {
+    74→  draft: { label: "Taslak", cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30", dot: "bg-zinc-400" },
+    75→  generating: { label: "Üretiliyor", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30", dot: "bg-amber-400 animate-pulse" },
+    76→  ready: { label: "Hazır", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
+    77→  error: { label: "Hata", cls: "bg-rose-500/15 text-rose-400 border-rose-500/30", dot: "bg-rose-500" },
+    78→};
+    79→
+    80→export function ProjectsView() {
+    81→  const go = useApp((s) => s.go);
+    82→  const setWizard = useApp((s) => s.setWizard);
+    83→  const [projects, setProjects] = React.useState<VideoProject[]>([]);
+    84→  const [loading, setLoading] = React.useState(true);
+    85→  const [filter, setFilter] = React.useState<FilterKey>("all");
+    86→  const [pendingDelete, setPendingDelete] = React.useState<VideoProject | null>(null);
+    87→  const [deleting, setDeleting] = React.useState(false);
+    88→  const [search, setSearch] = React.useState("");
+    89→  const [sort, setSort] = React.useState<SortKey>("newest");
+    90→  const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
+    91→  const [duplicatingId, setDuplicatingId] = React.useState<string | null>(null);
+    92→  const [shareProject, setShareProject] = React.useState<VideoProject | null>(null);
+    93→
+    94→  const load = React.useCallback(() => {
+    95→    setLoading(true);
+    96→    listProjects()
+    97→      .then((p) => setProjects(p))
+    98→      .catch((e: ApiError) => toast.error("Projeler yüklenemedi", { description: e.message }))
+    99→      .finally(() => setLoading(false));
+   100→  }, []);
+   101→
+   102→  React.useEffect(() => {
+   103→    load();
+   104→  }, [load]);
+   105→
+   106→  const filtered = React.useMemo(() => {
+   107→    let arr = projects.filter((p) => {
+   108→      if (filter === "all") return true;
+   109→      if (filter === "generating") return p.status === "generating";
+   110→      return p.status === filter;
+   111→    });
+   112→    const q = search.trim().toLowerCase();
+   113→    if (q) {
+   114→      arr = arr.filter(
+   115→        (p) =>
+   116→          p.title.toLowerCase().includes(q) ||
+   117→          p.topic.toLowerCase().includes(q)
+   118→      );
+   119→    }
+   120→    arr = [...arr].sort((a, b) => {
+   121→      if (sort === "newest") return +new Date(b.createdAt) - +new Date(a.createdAt);
+   122→      if (sort === "oldest") return +new Date(a.createdAt) - +new Date(b.createdAt);
+   123→      if (sort === "duration") return b.durationSec - a.durationSec;
+   124→      if (sort === "title") return a.title.localeCompare(b.title, "tr");
+   125→      return 0;
+   126→    });
+   127→    return arr;
+   128→  }, [projects, filter, search, sort]);
+   129→
+   130→  const counts = {
+   131→    all: projects.length,
+   132→    ready: projects.filter((p) => p.status === "ready").length,
+   133→    generating: projects.filter((p) => p.status === "generating").length,
+   134→    draft: projects.filter((p) => p.status === "draft").length,
+   135→  };
+   136→
+   137→  const confirmDelete = async () => {
+   138→    if (!pendingDelete) return;
+   139→    setDeleting(true);
+   140→    try {
+   141→      await deleteProject(pendingDelete.id);
+   142→      toast.success("Proje silindi");
+   143→      setProjects((prev) => prev.filter((p) => p.id !== pendingDelete.id));
+   144→    } catch (e: any) {
+   145→      toast.error("Silme hatası", { description: e?.message });
+   146→    } finally {
+   147→      setDeleting(false);
+   148→      setPendingDelete(null);
+   149→    }
+   150→  };
+   151→
+   152→  const handleDuplicate = async (project: VideoProject) => {
+   153→    setDuplicatingId(project.id);
+   154→    try {
+   155→      const copy = await duplicateProject(project.id);
+   156→      toast.success("Proje kopyalandı", {
+   157→        description: "Yeni taslak oluşturuldu.",
+   158→      });
+   159→      // Refresh list
+   160→      const fresh = await listProjects();
+   161→      setProjects(fresh);
+   162→      if (copy.scenes && copy.scenes.length > 0) {
+   163→        go("detail", copy.id);
+   164→      }
+   165→    } catch (e: any) {
+   166→      toast.error("Kopyalama hatası", { description: e?.message });
+   167→    } finally {
+   168→      setDuplicatingId(null);
+   169→    }
+   170→  };
+   171→
+   172→  return (
+   173→    <div className="space-y-6">
+   174→      <header className="relative overflow-hidden">
+   175→        {/* Decorative orb behind heading */}
+   176→        <div className="orb orb-sm bg-fuchsia-500/30 -top-8 right-4 pointer-events-none" />
+   177→        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative">
+   178→          <div>
+   179→            <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
+   180→              Kütüphanen
+   181→            </p>
+   182→            <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
+   183→              Projelerim
+   184→            </h1>
+   185→            <p className="text-sm text-muted-foreground mt-1">
+   186→              Oluşturduğun tüm videolar burada.
+   187→            </p>
+   188→          </div>
+   189→          <Button
+   190→            onClick={() => {
+   191→              setWizard({ step: 0 });
+   192→              go("create");
+   193→            }}
+   194→            className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
+   195→          >
+   196→            <Wand2 className="size-4" />
+   197→            Yeni Video
+   198→          </Button>
+   199→        </div>
+   200→      </header>
+   201→
+   202→      {/* Search + sort + view toggle */}
+   203→      <div className="flex flex-col md:flex-row gap-3 md:items-center">
+   204→        <div className="relative flex-1">
+   205→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+   206→          <Input
+   207→            value={search}
+   208→            onChange={(e) => setSearch(e.target.value)}
+   209→            placeholder="Başlık veya konu ara..."
+   210→            className="pl-9"
+   211→          />
+   212→        </div>
+   213→        <div className="flex items-center gap-2">
+   214→          <div className="flex items-center gap-1.5">
+   215→            <ArrowUpDown className="size-3.5 text-muted-foreground" />
+   216→            <Select value={sort} onValueChange={(v) => setSort(v as SortKey)}>
+   217→              <SelectTrigger className="w-[140px] h-9">
+   218→                <SelectValue />
+   219→              </SelectTrigger>
+   220→              <SelectContent>
+   221→                <SelectItem value="newest">En yeni</SelectItem>
+   222→                <SelectItem value="oldest">En eski</SelectItem>
+   223→                <SelectItem value="duration">Süreye göre</SelectItem>
+   224→                <SelectItem value="title">Başlığa göre</SelectItem>
+   225→              </SelectContent>
+   226→            </Select>
+   227→          </div>
+   228→          <div className="flex rounded-lg border border-border overflow-hidden">
+   229→            <button
+   230→              onClick={() => setViewMode("grid")}
+   231→              className={cn(
+   232→                "grid place-items-center size-9 transition-colors",
+   233→                viewMode === "grid"
+   234→                  ? "bg-fuchsia-500/15 text-fuchsia-500"
+   235→                  : "text-muted-foreground hover:bg-accent"
+   236→              )}
+   237→              aria-label="Izgara görünüm"
+   238→            >
+   239→              <LayoutGrid className="size-4" />
+   240→            </button>
+   241→            <button
+   242→              onClick={() => setViewMode("list")}
+   243→              className={cn(
+   244→                "grid place-items-center size-9 transition-colors",
+   245→                viewMode === "list"
+   246→                  ? "bg-fuchsia-500/15 text-fuchsia-500"
+   247→                  : "text-muted-foreground hover:bg-accent"
+   248→              )}
+   249→              aria-label="Liste görünüm"
+   250→            >
+   251→              <ListIcon className="size-4" />
+   252→            </button>
+   253→          </div>
+   254→        </div>
+   255→      </div>
+   256→
+   257→      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterKey)}>
+   258→        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+   259→          <Filter className="size-4 text-muted-foreground shrink-0" />
+   260→          <TabsList className="bg-muted/50">
+   261→            <TabsTrigger value="all" className="min-h-[36px]">
+   262→              Tümü <CountBadge n={counts.all} />
+   263→            </TabsTrigger>
+   264→            <TabsTrigger value="ready" className="min-h-[36px]">
+   265→              Hazır <CountBadge n={counts.ready} />
+   266→            </TabsTrigger>
+   267→            <TabsTrigger value="generating" className="min-h-[36px]">
+   268→              Üretiliyor <CountBadge n={counts.generating} />
+   269→            </TabsTrigger>
+   270→            <TabsTrigger value="draft" className="min-h-[36px]">
+   271→              Taslak <CountBadge n={counts.draft} />
+   272→            </TabsTrigger>
+   273→          </TabsList>
+   274→        </div>
+   275→
+   276→        <TabsContent value={filter} className="mt-6">
+   277→          {loading ? (
+   278→            viewMode === "grid" ? (
+   279→              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   280→                {Array.from({ length: 6 }).map((_, i) => (
+   281→                  <Skeleton key={i} className="h-72 rounded-2xl" />
+   282→                ))}
+   283→              </div>
+   284→            ) : (
+   285→              <div className="space-y-2">
+   286→                {Array.from({ length: 6 }).map((_, i) => (
+   287→                  <Skeleton key={i} className="h-20 rounded-xl" />
+   288→                ))}
+   289→              </div>
+   290→            )
+   291→          ) : filtered.length === 0 ? (
+   292→            <Card className="border-dashed relative overflow-hidden">
+   293→              <CardContent className="relative py-14 flex flex-col items-center text-center gap-4">
+   294→                {/* Floating orbs */}
+   295→                <div className="orb orb-sm bg-violet-500/30 -top-6 -left-6" />
+   296→                <div className="orb orb-sm bg-fuchsia-500/25 -bottom-8 -right-6" />
+   297→                <div className="orb orb-sm bg-pink-500/20 top-1/3 left-1/2" />
+   298→                <div className="relative grid size-24 place-items-center rounded-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-2xl shadow-fuchsia-500/30 pulse-glow">
+   299→                  <Clapperboard className="size-10" />
+   300→                </div>
+   301→                <div className="relative">
+   302→                  <p className="font-semibold text-lg">
+   303→                    {search ? "Sonuç bulunamadı" : "Burada henüz proje yok"}
+   304→                  </p>
+   305→                  <p className="text-sm text-muted-foreground mt-1 max-w-md">
+   306→                    {search
+   307→                      ? "Aramanı değiştir ya da yeni bir video üret."
+   308→                      : "Filtreyi değiştir ya da yeni bir video üret."}
+   309→                  </p>
+   310→                </div>
+   311→                <Button
+   312→                  onClick={() => {
+   313→                    setWizard({ step: 0 });
+   314→                    go("create");
+   315→                  }}
+   316→                  className="relative btn-gradient shine-on-hover border-0 min-h-[44px]"
+   317→                >
+   318→                  <Wand2 className="size-4" />
+   319→                  Yeni Video
+   320→                </Button>
+   321→              </CardContent>
+   322→            </Card>
+   323→          ) : viewMode === "grid" ? (
+   324→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   325→              {filtered.map((p, i) => (
+   326→                <ProjectCard
+   327→                  key={p.id}
+   328→                  project={p}
+   329→                  index={i}
+   330→                  onOpen={() => go("detail", p.id)}
+   331→                  onDelete={() => setPendingDelete(p)}
+   332→                  onDuplicate={() => handleDuplicate(p)}
+   333→                  onShare={() => setShareProject(p)}
+   334→                  duplicating={duplicatingId === p.id}
+   335→                />
+   336→              ))}
+   337→            </div>
+   338→          ) : (
+   339→            <div className="space-y-2">
+   340→              {filtered.map((p, i) => (
+   341→                <ProjectRow
+   342→                  key={p.id}
+   343→                  project={p}
+   344→                  index={i}
+   345→                  onOpen={() => go("detail", p.id)}
+   346→                  onDelete={() => setPendingDelete(p)}
+   347→                  onDuplicate={() => handleDuplicate(p)}
+   348→                  onShare={() => setShareProject(p)}
+   349→                  duplicating={duplicatingId === p.id}
+   350→                />
+   351→              ))}
+   352→            </div>
+   353→          )}
+   354→        </TabsContent>
+   355→      </Tabs>
+   356→
+   357→      <AlertDialog
+   358→        open={Boolean(pendingDelete)}
+   359→        onOpenChange={(o) => !o && setPendingDelete(null)}
+   360→      >
+   361→        <AlertDialogContent>
+   362→          <AlertDialogHeader>
+   363→            <AlertDialogTitle>Projeyi sil?</AlertDialogTitle>
+   364→            <AlertDialogDescription>
+   365→              <span className="font-medium text-foreground">
+   366→                “{pendingDelete?.title}”
+   367→              </span>{" "}
+   368→              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+   369→            </AlertDialogDescription>
+   370→          </AlertDialogHeader>
+   371→          <AlertDialogFooter>
+   372→            <AlertDialogCancel disabled={deleting}>İptal</AlertDialogCancel>
+   373→            <AlertDialogAction
+   374→              onClick={(e) => {
+   375→                e.preventDefault();
+   376→                confirmDelete();
+   377→              }}
+   378→              disabled={deleting}
+   379→              className="bg-rose-500 hover:bg-rose-600 text-white"
+   380→            >
+   381→              {deleting ? (
+   382→                <Loader2 className="size-4 animate-spin" />
+   383→              ) : (
+   384→                <Trash2 className="size-4" />
+   385→              )}
+   386→              Sil
+   387→            </AlertDialogAction>
+   388→          </AlertDialogFooter>
+   389→        </AlertDialogContent>
+   390→      </AlertDialog>
+   391→
+   392→      {/* Share dialog (controlled) */}
+   393→      {shareProject && (
+   394→        <ShareDialog
+   395→          project={shareProject}
+   396→          open={Boolean(shareProject)}
+   397→          onOpenChange={(o) => !o && setShareProject(null)}
+   398→        />
+   399→      )}
+   400→    </div>
+   401→  );
+   402→}
+   403→
+   404→function CountBadge({ n }: { n: number }) {
+   405→  if (!n) return null;
+   406→  return (
+   407→    <span className="ml-1.5 inline-grid place-items-center rounded-full bg-background px-1.5 text-[10px] font-semibold tabular-nums">
+   408→      {n}
+   409→    </span>
+   410→  );
+   411→}
+   412→
+   413→function ProjectThumbnail({
+   414→  project,
+   415→  className,
+   416→}: {
+   417→  project: VideoProject;
+   418→  className?: string;
+   419→}) {
+   420→  const modeInfo = MODE_MAP[project.mode];
+   421→  const styleInfo = STYLE_MAP[project.style];
+   422→  if (project.thumbnailUrl) {
+   423→    return (
+   424→      <img
+   425→        src={project.thumbnailUrl}
+   426→        alt={project.title}
+   427→        className={cn("size-full object-cover", className)}
+   428→      />
+   429→    );
+   430→  }
+   431→  return (
+   432→    <div
+   433→      className={cn(
+   434→        "size-full grid place-items-center bg-gradient-to-br",
+   435→        styleInfo?.gradient || "from-violet-500 to-fuchsia-500",
+   436→        className
+   437→      )}
+   438→    >
+   439→      <span className="text-5xl drop-shadow-md">{modeInfo?.emoji ?? "🎬"}</span>
+   440→    </div>
+   441→  );
+   442→}
+   443→
+   444→function ProjectCard({
+   445→  project,
+   446→  index,
+   447→  onOpen,
+   448→  onDelete,
+   449→  onDuplicate,
+   450→  onShare,
+   451→  duplicating,
+   452→}: {
+   453→  project: VideoProject;
+   454→  index: number;
+   455→  onOpen: () => void;
+   456→  onDelete: () => void;
+   457→  onDuplicate: () => void;
+   458→  onShare: () => void;
+   459→  duplicating: boolean;
+   460→}) {
+   461→  const modeInfo = MODE_MAP[project.mode];
+   462→  const langInfo = LANGUAGE_MAP[project.language];
+   463→  const status = STATUS_META[project.status];
+   464→
+   465→  return (
+   466→    <motion.div
+   467→      initial={{ opacity: 0, y: 14 }}
+   468→      animate={{ opacity: 1, y: 0 }}
+   469→      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
+   470→    >
+   471→      <Card className="glass card-glow shine-on-hover card-hover-lift overflow-hidden h-full group relative hover:border-fuchsia-500/50 hover:ring-1 hover:ring-fuchsia-500/30">
+   472→        <button onClick={onOpen} className="block w-full text-left relative">
+   473→          <div className="relative aspect-video overflow-hidden bg-muted">
+   474→            <ProjectThumbnail
+   475→              project={project}
+   476→              className="transition-transform duration-500 group-hover:scale-105"
+   477→            />
+   478→            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20 opacity-80 group-hover:opacity-100 transition-opacity" />
+   479→            {/* gradient overlay on hover (intensifies) */}
+   480→            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-tr from-fuchsia-500/20 via-transparent to-violet-500/20" />
+   481→
+   482→            {/* Play overlay (scales in) */}
+   483→            <div className="absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity">
+   484→              <motion.div
+   485→                initial={{ scale: 0.4 }}
+   486→                whileHover={{ scale: 1.1 }}
+   487→                className="size-14 rounded-full bg-white/15 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl group-hover:animate-pulse"
+   488→              >
+   489→                <Play className="size-6 text-white fill-white translate-x-0.5" />
+   490→              </motion.div>
+   491→            </div>
+   492→
+   493→            {/* Status badge — generating pulses */}
+   494→            <div className="absolute top-2 left-2">
+   495→              <Badge
+   496→                variant="outline"
+   497→                className={cn(
+   498→                  "backdrop-blur-md bg-black/40 border-0 text-white",
+   499→                  status.cls,
+   500→                  project.status === "generating" && "pulse-glow"
+   501→                )}
+   502→              >
+   503→                <span className={cn("size-1.5 rounded-full", status.dot)} />
+   504→                {status.label}
+   505→              </Badge>
+   506→            </div>
+   507→
+   508→            {/* Duration */}
+   509→            <div className="absolute top-2 right-2 rounded bg-black/60 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-medium text-white tabular-nums">
+   510→              {formatDuration(project.durationSec)}
+   511→            </div>
+   512→
+   513→            {/* Bottom info */}
+   514→            <div className="absolute bottom-0 inset-x-0 p-3">
+   515→              <div className="flex items-center gap-2 mb-1">
+   516→                <Badge variant="outline" className="bg-white/10 border-white/20 text-white">
+   517→                  {modeInfo?.emoji} {modeInfo?.label}
+   518→                </Badge>
+   519→                {langInfo && (
+   520→                  <span className="text-xs" title={langInfo.nativeName}>
+   521→                    {langInfo.flag}
+   522→                  </span>
+   523→                )}
+   524→              </div>
+   525→              <p className="text-sm font-semibold text-white line-clamp-1">
+   526→                {project.title}
+   527→              </p>
+   528→            </div>
+   529→          </div>
+   530→        </button>
+   531→
+   532→        <CardContent className="flex items-center justify-between py-3 gap-2">
+   533→          <div className="text-xs text-muted-foreground">
+   534→            {timeAgo(project.createdAt)} · {project.sceneCount} sahne
+   535→          </div>
+   536→          <div className="flex items-center gap-1">
+   537→            <Button
+   538→              size="sm"
+   539→              variant="ghost"
+   540→              onClick={onOpen}
+   541→              className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
+   542→            >
+   543→              Aç
+   544→            </Button>
+   545→            <Button
+   546→              size="icon"
+   547→              variant="ghost"
+   548→              onClick={onShare}
+   549→              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+   550→              aria-label="Paylaş"
+   551→              title="Paylaş"
+   552→            >
+   553→              <Share2 className="size-4" />
+   554→            </Button>
+   555→            <Button
+   556→              size="icon"
+   557→              variant="ghost"
+   558→              onClick={onDuplicate}
+   559→              disabled={duplicating}
+   560→              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+   561→              aria-label="Kopyala"
+   562→              title="Kopyala"
+   563→            >
+   564→              {duplicating ? (
+   565→                <Loader2 className="size-4 animate-spin" />
+   566→              ) : (
+   567→                <Copy className="size-4" />
+   568→              )}
+   569→            </Button>
+   570→            <Button
+   571→              size="icon"
+   572→              variant="ghost"
+   573→              onClick={onDelete}
+   574→              className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+   575→              aria-label="Sil"
+   576→            >
+   577→              <Trash2 className="size-4" />
+   578→            </Button>
+   579→          </div>
+   580→        </CardContent>
+   581→      </Card>
+   582→    </motion.div>
+   583→  );
+   584→}
+   585→
+   586→function ProjectRow({
+   587→  project,
+   588→  index,
+   589→  onOpen,
+   590→  onDelete,
+   591→  onDuplicate,
+   592→  onShare,
+   593→  duplicating,
+   594→}: {
+   595→  project: VideoProject;
+   596→  index: number;
+   597→  onOpen: () => void;
+   598→  onDelete: () => void;
+   599→  onDuplicate: () => void;
+   600→  onShare: () => void;
+   601→  duplicating: boolean;
+   602→}) {
+   603→  const modeInfo = MODE_MAP[project.mode];
+   604→  const langInfo = LANGUAGE_MAP[project.language];
+   605→  const status = STATUS_META[project.status];
+   606→
+   607→  return (
+   608→    <motion.div
+   609→      initial={{ opacity: 0, x: -10 }}
+   610→      animate={{ opacity: 1, x: 0 }}
+   611→      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.25) }}
+   612→    >
+   613→      <Card className="glass card-glow group hover:border-fuchsia-500/40 relative overflow-hidden">
+   614→        {/* Left gradient accent bar that appears on hover */}
+   615→        <span
+   616→          aria-hidden
+   617→          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 via-fuchsia-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity"
+   618→        />
+   619→        <CardContent className="py-3 flex items-center gap-4 pl-5">
+   620→          <button
+   621→            onClick={onOpen}
+   622→            className="relative shrink-0 size-20 rounded-lg overflow-hidden bg-muted group/thumb"
+   623→            aria-label="Aç"
+   624→          >
+   625→            <ProjectThumbnail
+   626→              project={project}
+   627→              className="transition-transform duration-500 group-hover/thumb:scale-105"
+   628→            />
+   629→            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/30 transition-colors grid place-items-center">
+   630→              <Play className="size-5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity fill-white translate-x-0.5" />
+   631→            </div>
+   632→          </button>
+   633→          <button onClick={onOpen} className="min-w-0 flex-1 text-left">
+   634→            <div className="flex items-center gap-2 mb-1 flex-wrap">
+   635→              <Badge
+   636→                variant="outline"
+   637→                className={cn(
+   638→                  "text-[10px] border",
+   639→                  status.cls,
+   640→                  project.status === "generating" && "pulse-glow"
+   641→                )}
+   642→              >
+   643→                <span className={cn("size-1.5 rounded-full", status.dot)} />
+   644→                {status.label}
+   645→              </Badge>
+   646→              <Badge variant="outline" className="text-[10px]">
+   647→                {modeInfo?.emoji} {modeInfo?.label}
+   648→              </Badge>
+   649→              {langInfo && (
+   650→                <span className="text-xs" title={langInfo.nativeName}>
+   651→                  {langInfo.flag}
+   652→                </span>
+   653→              )}
+   654→            </div>
+   655→            <p className="text-sm font-semibold line-clamp-1 group-hover:text-fuchsia-500 transition-colors">
+   656→              {project.title}
+   657→            </p>
+   658→            <p className="text-xs text-muted-foreground mt-0.5">
+   659→              {timeAgo(project.createdAt)} · {project.sceneCount} sahne · {formatDuration(project.durationSec)}
+   660→            </p>
+   661→          </button>
+   662→          <div className="flex items-center gap-1 shrink-0">
+   663→            <Button
+   664→              size="sm"
+   665→              variant="ghost"
+   666→              onClick={onOpen}
+   667→              className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
+   668→            >
+   669→              Aç
+   670→            </Button>
+   671→            <Button
+   672→              size="icon"
+   673→              variant="ghost"
+   674→              onClick={onShare}
+   675→              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+   676→              aria-label="Paylaş"
+   677→              title="Paylaş"
+   678→            >
+   679→              <Share2 className="size-4" />
+   680→            </Button>
+   681→            <Button
+   682→              size="icon"
+   683→              variant="ghost"
+   684→              onClick={onDuplicate}
+   685→              disabled={duplicating}
+   686→              className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
+   687→              aria-label="Kopyala"
+   688→              title="Kopyala"
+   689→            >
+   690→              {duplicating ? (
+   691→                <Loader2 className="size-4 animate-spin" />
+   692→              ) : (
+   693→                <Copy className="size-4" />
+   694→              )}
+   695→            </Button>
+   696→            <Button
+   697→              size="icon"
+   698→              variant="ghost"
+   699→              onClick={onDelete}
+   700→              className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+   701→              aria-label="Sil"
+   702→            >
+   703→              <Trash2 className="size-4" />
+   704→            </Button>
+   705→          </div>
+   706→        </CardContent>
+   707→      </Card>
+   708→    </motion.div>
+   709→  );
+   710→}
+   711→

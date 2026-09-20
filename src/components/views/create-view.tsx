@@ -151,9 +151,9 @@ export function CreateView() {
                   className={cn(
                     "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all min-h-[36px] shrink-0",
                     active
-                      ? "border-fuchsia-500 bg-fuchsia-500/10 text-foreground pulse-glow"
+                      ? "accent-border bg-accent/10 text-foreground pulse-glow"
                       : done
-                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15"
+                      ? "accent-border bg-accent/5 hover:bg-accent/10"
                       : "border-border text-muted-foreground cursor-not-allowed"
                   )}
                 >
@@ -161,14 +161,14 @@ export function CreateView() {
                     className={cn(
                       "relative grid size-5 place-items-center rounded-full text-[10px]",
                       active
-                        ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white"
+                        ? "accent-gradient text-white"
                         : done
-                        ? "bg-emerald-500 text-white"
+                        ? "accent-gradient text-white"
                         : "bg-muted text-muted-foreground"
                     )}
                   >
                     {active && (
-                      <span className="absolute inset-0 rounded-full bg-fuchsia-500/40 animate-ping" />
+                      <span className="absolute inset-0 rounded-full accent-dot opacity-60" aria-hidden />
                     )}
                     <span className="relative">
                       {done ? <Check className="size-3" /> : i + 1}
@@ -181,7 +181,7 @@ export function CreateView() {
                     className={cn(
                       "h-px flex-1 transition-colors",
                       done
-                        ? "bg-gradient-to-r from-emerald-500/60 to-fuchsia-500/40 animated-gradient-x bg-[length:200%_100%]"
+                        ? "accent-gradient animated-gradient-x bg-[length:200%_100%]"
                         : "bg-border"
                     )}
                   />
@@ -254,7 +254,7 @@ function StepMode() {
               onClick={() => setWizard({ mode: m.id as VideoMode })}
               className={cn(
                 "group text-left transition-transform",
-                active ? "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background rounded-2xl scale-[1.02]" : ""
+                active ? "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background rounded-2xl scale-[1.02] accent-ring" : ""
               )}
             >
               <Card
@@ -545,7 +545,7 @@ function PromptSuggestions({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => pickIdea(idea)}
-                    className="bg-violet-500/10 text-violet-600 dark:text-violet-300 hover:bg-violet-500/20 border border-violet-500/20 rounded-full px-3 py-1 text-xs transition-colors text-left max-w-full"
+                    className="accent-bg-soft accent-text-soft accent-border hover:brightness-110 rounded-full px-3 py-1 text-xs transition-all text-left max-w-full badge-pop"
                   >
                     {idea}
                   </motion.button>
@@ -602,7 +602,7 @@ function PromptSuggestions({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: i * 0.06 }}
                     onClick={() => pickIdea(idea)}
-                    className="bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-300 hover:bg-fuchsia-500/20 border border-fuchsia-500/30 rounded-full px-3 py-1 text-xs transition-colors text-left max-w-full"
+                    className="accent-bg-soft accent-text-soft accent-border hover:brightness-110 rounded-full px-3 py-1 text-xs transition-all text-left max-w-full badge-pop"
                   >
                     {idea}
                   </motion.button>
@@ -1492,7 +1492,7 @@ function StepSummary() {
           <Button
             onClick={generate}
             disabled={submitting}
-            className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[44px] min-w-[160px]"
+            className="accent-gradient accent-glow text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[44px] min-w-[160px] shine-on-hover"
           >
             {submitting ? (
               <>

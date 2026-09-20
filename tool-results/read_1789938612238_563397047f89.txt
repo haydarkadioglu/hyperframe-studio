@@ -1,0 +1,815 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { motion, useMotionValue, animate } from "framer-motion";
+     5→import {
+     6→  Area,
+     7→  AreaChart,
+     8→  Bar,
+     9→  BarChart,
+    10→  Cell,
+    11→  Pie,
+    12→  PieChart,
+    13→  ResponsiveContainer,
+    14→  Tooltip,
+    15→  XAxis,
+    16→  YAxis,
+    17→  CartesianGrid,
+    18→  LabelList,
+    19→} from "recharts";
+    20→import {
+    21→  Sparkles,
+    22→  Wand2,
+    23→  Video,
+    24→  CheckCircle2,
+    25→  Clock,
+    26→  Layers,
+    27→  ArrowRight,
+    28→  Cpu,
+    29→  AudioLines,
+    30→  PlayCircle,
+    31→} from "lucide-react";
+    32→import { useApp } from "@/lib/store";
+    33→import {
+    34→  getStats,
+    35→  listProjects,
+    36→  timeAgo,
+    37→  formatDuration,
+    38→  type StatsData,
+    39→  type ApiError,
+    40→} from "@/lib/api-client";
+    41→import {
+    42→  getLLMProvider,
+    43→  getTTSProvider,
+    44→  MODE_MAP,
+    45→  STYLE_MAP,
+    46→} from "@/lib/providers";
+    47→import type { VideoProject } from "@/lib/types";
+    48→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    49→import { Button } from "@/components/ui/button";
+    50→import { Badge } from "@/components/ui/badge";
+    51→import { Skeleton } from "@/components/ui/skeleton";
+    52→import { toast } from "sonner";
+    53→import { cn } from "@/lib/utils";
+    54→
+    55→const CHART_COLORS = [
+    56→  "#7c3aed", // violet
+    57→  "#d946ef", // fuchsia
+    58→  "#ec4899", // pink
+    59→  "#f59e0b", // amber
+    60→  "#10b981", // emerald
+    61→  "#06b6d4", // cyan
+    62→  "#f43f5e", // rose
+    63→];
+    64→
+    65→const container = {
+    66→  hidden: { opacity: 0 },
+    67→  show: {
+    68→    opacity: 1,
+    69→    transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+    70→  },
+    71→};
+    72→const item = {
+    73→  hidden: { opacity: 0, y: 18 },
+    74→  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+    75→};
+    76→
+    77→export function DashboardView() {
+    78→  const go = useApp((s) => s.go);
+    79→  const setWizard = useApp((s) => s.setWizard);
+    80→  const [stats, setStats] = React.useState<StatsData | null>(null);
+    81→  const [recent, setRecent] = React.useState<VideoProject[]>([]);
+    82→  const [loading, setLoading] = React.useState(true);
+    83→
+    84→  React.useEffect(() => {
+    85→    let alive = true;
+    86→    setLoading(true);
+    87→    Promise.all([
+    88→      getStats().catch((e: ApiError) => {
+    89→        toast.error("İstatistikler yüklenemedi", { description: e.message });
+    90→        return null;
+    91→      }),
+    92→      listProjects().catch((e: ApiError) => {
+    93→        toast.error("Projeler yüklenemedi", { description: e.message });
+    94→        return [] as VideoProject[];
+    95→      }),
+    96→    ]).then(([s, p]) => {
+    97→      if (!alive) return;
+    98→      setStats(s);
+    99→      setRecent(p.slice(0, 5));
+   100→      setLoading(false);
+   101→    });
+   102→    return () => {
+   103→      alive = false;
+   104→    };
+   105→  }, []);
+   106→
+   107→  if (loading) {
+   108→    return <DashboardSkeleton />;
+   109→  }
+   110→
+   111→  const total = stats?.totals.total ?? 0;
+   112→
+   113→  if (total === 0) {
+   114→    return (
+   115→      <div className="space-y-6">
+   116→        <Header />
+   117→        <Card className="border-dashed overflow-hidden">
+   118→          <CardContent className="relative py-20 flex flex-col items-center text-center gap-4">
+   119→            <div className="absolute inset-0 mesh-bg opacity-30 pointer-events-none" />
+   120→            <div className="relative grid size-20 place-items-center rounded-3xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-xl shadow-fuchsia-500/30">
+   121→              <Video className="size-9" />
+   122→            </div>
+   123→            <div className="relative">
+   124→              <p className="text-lg font-bold">Henüz video yok</p>
+   125→              <p className="text-sm text-muted-foreground mt-1 max-w-md">
+   126→                İlk videonu üretmek için bir mod seç, AI senaryo, görsel ve
+   127→                seslendirmeyi senin için hazırlasın.
+   128→              </p>
+   129→            </div>
+   130→            <Button
+   131→              onClick={() => {
+   132→                setWizard({ step: 0 });
+   133→                go("create");
+   134→              }}
+   135→              className="relative bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[44px]"
+   136→            >
+   137→              <Wand2 className="size-4" />
+   138→              İlk videonu oluştur
+   139→            </Button>
+   140→          </CardContent>
+   141→        </Card>
+   142→      </div>
+   143→    );
+   144→  }
+   145→
+   146→  return (
+   147→    <div className="space-y-6">
+   148→      <Header />
+   149→
+   150→      {/* KPI cards */}
+   151→      <motion.div
+   152→        variants={container}
+   153→        initial="hidden"
+   154→        animate="show"
+   155→        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+   156→      >
+   157→        <KpiCard
+   158→          icon={Video}
+   159→          gradient="from-violet-500 to-fuchsia-500"
+   160→          value={stats?.totals.total ?? 0}
+   161→          label="Toplam Video"
+   162→          subtitle="Şu ana kadar üretilen"
+   163→        />
+   164→        <KpiCard
+   165→          icon={CheckCircle2}
+   166→          gradient="from-emerald-500 to-teal-500"
+   167→          value={stats?.totals.ready ?? 0}
+   168→          label="Hazır"
+   169→          subtitle="Oynatmaya hazır"
+   170→        />
+   171→        <KpiCard
+   172→          icon={Clock}
+   173→          gradient="from-amber-500 to-orange-500"
+   174→          value={stats?.totals.totalDurationSec ?? 0}
+   175→          label="Toplam Süre"
+   176→          subtitle="Tüm videolar boyunca"
+   177→          formatDurationValue
+   178→        />
+   179→        <KpiCard
+   180→          icon={Layers}
+   181→          gradient="from-cyan-500 to-blue-500"
+   182→          value={stats?.totals.totalScenes ?? 0}
+   183→          label="Toplam Sahne"
+   184→          subtitle="Tüm videolarda"
+   185→        />
+   186→      </motion.div>
+   187→
+   188→      {/* Activity chart */}
+   189→      <Card className="glass relative overflow-hidden">
+   190→        <div className="orb orb-sm bg-violet-500/15 -top-10 -right-10" />
+   191→        <CardHeader>
+   192→          <div className="flex items-center justify-between relative">
+   193→            <div>
+   194→              <CardTitle className="text-base">Son 14 Gün Aktivite</CardTitle>
+   195→              <p className="text-xs text-muted-foreground mt-1">
+   196→                Günlük oluşturulan video sayısı
+   197→              </p>
+   198→            </div>
+   199→            <Badge className="bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30">
+   200→              <Sparkles className="size-3" />
+   201→              Son 14 gün
+   202→            </Badge>
+   203→          </div>
+   204→        </CardHeader>
+   205→        <CardContent>
+   206→          <div className="h-[220px] w-full">
+   207→            <ResponsiveContainer width="100%" height="100%">
+   208→              <AreaChart
+   209→                data={stats?.dailyActivity ?? []}
+   210→                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+   211→              >
+   212→                <defs>
+   213→                  <linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1">
+   214→                    <stop offset="0%" stopColor="#d946ef" stopOpacity={0.55} />
+   215→                    <stop offset="50%" stopColor="#7c3aed" stopOpacity={0.25} />
+   216→                    <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+   217→                  </linearGradient>
+   218→                  <linearGradient id="activityStroke" x1="0" y1="0" x2="1" y2="0">
+   219→                    <stop offset="0%" stopColor="#7c3aed" />
+   220→                    <stop offset="50%" stopColor="#d946ef" />
+   221→                    <stop offset="100%" stopColor="#ec4899" />
+   222→                  </linearGradient>
+   223→                </defs>
+   224→                <CartesianGrid
+   225→                  strokeDasharray="3 3"
+   226→                  stroke="currentColor"
+   227→                  className="text-border/40"
+   228→                  vertical={false}
+   229→                />
+   230→                <XAxis
+   231→                  dataKey="label"
+   232→                  tick={{ fontSize: 11, fill: "currentColor" }}
+   233→                  className="text-muted-foreground"
+   234→                  tickLine={false}
+   235→                  axisLine={false}
+   236→                  interval="preserveStartEnd"
+   237→                />
+   238→                <YAxis
+   239→                  allowDecimals={false}
+   240→                  tick={{ fontSize: 11, fill: "currentColor" }}
+   241→                  className="text-muted-foreground"
+   242→                  tickLine={false}
+   243→                  axisLine={false}
+   244→                  width={36}
+   245→                />
+   246→                <Tooltip
+   247→                  contentStyle={{
+   248→                    backgroundColor: "rgba(20,20,22,0.92)",
+   249→                    border: "1px solid rgba(217,70,239,0.3)",
+   250→                    borderRadius: 12,
+   251→                    color: "#fff",
+   252→                    fontSize: 12,
+   253→                  }}
+   254→                  labelStyle={{ color: "#e879f9", fontWeight: 600 }}
+   255→                  formatter={(v: number) => [`${v} video`, ""]}
+   256→                />
+   257→                <Area
+   258→                  type="monotone"
+   259→                  dataKey="count"
+   260→                  name="Video"
+   261→                  stroke="url(#activityStroke)"
+   262→                  strokeWidth={2.5}
+   263→                  fill="url(#activityFill)"
+   264→                  dot={false}
+   265→                  activeDot={{ r: 5, fill: "#d946ef", stroke: "#fff", strokeWidth: 2 }}
+   266→                />
+   267→              </AreaChart>
+   268→            </ResponsiveContainer>
+   269→          </div>
+   270→        </CardContent>
+   271→      </Card>
+   272→
+   273→      {/* Distribution charts */}
+   274→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   275→        <Card className="glass relative overflow-hidden">
+   276→          <div className="orb orb-sm bg-fuchsia-500/15 -bottom-12 -left-10" />
+   277→          <CardHeader className="relative">
+   278→            <CardTitle className="text-base">Mod Dağılımı</CardTitle>
+   279→            <p className="text-xs text-muted-foreground">
+   280→              Hangi üretim modunu ne kadar kullandın
+   281→            </p>
+   282→          </CardHeader>
+   283→          <CardContent className="relative">
+   284→            <DistributionPie data={stats?.distributions.byMode ?? []} />
+   285→          </CardContent>
+   286→        </Card>
+   287→
+   288→        <Card className="glass relative overflow-hidden">
+   289→          <div className="orb orb-sm bg-pink-500/15 -top-10 -left-10" />
+   290→          <CardHeader className="relative">
+   291→            <CardTitle className="text-base">Dil Dağılımı</CardTitle>
+   292→            <p className="text-xs text-muted-foreground">
+   293→              Videoların dil kırılımı
+   294→            </p>
+   295→          </CardHeader>
+   296→          <CardContent className="relative">
+   297→            <LanguageBar data={stats?.distributions.byLanguage ?? []} />
+   298→          </CardContent>
+   299→        </Card>
+   300→      </div>
+   301→
+   302→      {/* Provider usage */}
+   303→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   304→        <ProviderUsageCard
+   305→          title="LLM Sağlayıcı Kullanımı"
+   306→          icon={Cpu}
+   307→          accent="violet"
+   308→          data={stats?.distributions.byLlmProvider ?? []}
+   309→          resolver={(id) => getLLMProvider(id)?.name ?? id}
+   310→        />
+   311→        <ProviderUsageCard
+   312→          title="TTS Sağlayıcı Kullanımı"
+   313→          icon={AudioLines}
+   314→          accent="fuchsia"
+   315→          data={stats?.distributions.byTtsProvider ?? []}
+   316→          resolver={(id) => getTTSProvider(id)?.name ?? id}
+   317→        />
+   318→      </div>
+   319→
+   320→      {/* Recent projects */}
+   321→      <Card className="glass">
+   322→        <CardHeader>
+   323→          <div className="flex items-center justify-between">
+   324→            <div>
+   325→              <CardTitle className="text-base">Son Projeler</CardTitle>
+   326→              <p className="text-xs text-muted-foreground mt-1">
+   327→                En son oluşturduğun 5 video
+   328→              </p>
+   329→            </div>
+   330→            <Button
+   331→              variant="ghost"
+   332→              size="sm"
+   333→              onClick={() => go("projects")}
+   334→              className="text-fuchsia-500 hover:text-fuchsia-400"
+   335→            >
+   336→              Tümünü gör
+   337→              <ArrowRight className="size-3.5" />
+   338→            </Button>
+   339→          </div>
+   340→        </CardHeader>
+   341→        <CardContent>
+   342→          {recent.length === 0 ? (
+   343→            <p className="text-sm text-muted-foreground py-6 text-center">
+   344→              Henüz proje yok.
+   345→            </p>
+   346→          ) : (
+   347→            <ul className="space-y-1">
+   348→              {recent.map((p, i) => {
+   349→                const modeInfo = MODE_MAP[p.mode];
+   350→                const styleInfo = STYLE_MAP[p.style];
+   351→                return (
+   352→                  <motion.li
+   353→                    key={p.id}
+   354→                    initial={{ opacity: 0, x: -10 }}
+   355→                    animate={{ opacity: 1, x: 0 }}
+   356→                    transition={{ delay: i * 0.05 }}
+   357→                  >
+   358→                    <button
+   359→                      onClick={() => go("detail", p.id)}
+   360→                      className="group w-full flex items-center gap-3 rounded-xl p-2 hover:bg-accent/60 transition-colors text-left"
+   361→                    >
+   362→                      <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+   363→                        {p.thumbnailUrl ? (
+   364→                          <img
+   365→                            src={p.thumbnailUrl}
+   366→                            alt={p.title}
+   367→                            className="size-full object-cover"
+   368→                          />
+   369→                        ) : (
+   370→                          <div
+   371→                            className={cn(
+   372→                              "size-full grid place-items-center bg-gradient-to-br",
+   373→                              styleInfo?.gradient || "from-violet-500 to-fuchsia-500"
+   374→                            )}
+   375→                          >
+   376→                            <span className="text-lg">{modeInfo?.emoji ?? "🎬"}</span>
+   377→                          </div>
+   378→                        )}
+   379→                        <div className="absolute inset-0 grid place-items-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+   380→                          <PlayCircle className="size-5 text-white" />
+   381→                        </div>
+   382→                      </div>
+   383→                      <div className="min-w-0 flex-1">
+   384→                        <p className="text-sm font-medium truncate group-hover:text-fuchsia-500 transition-colors">
+   385→                          {p.title}
+   386→                        </p>
+   387→                        <p className="text-xs text-muted-foreground truncate">
+   388→                          {modeInfo?.emoji} {modeInfo?.label} · {p.sceneCount} sahne · {formatDuration(p.durationSec)}
+   389→                        </p>
+   390→                      </div>
+   391→                      <div className="flex flex-col items-end gap-1 shrink-0">
+   392→                        <StatusPill status={p.status} />
+   393→                        <span className="text-[10px] text-muted-foreground">
+   394→                          {timeAgo(p.createdAt)}
+   395→                        </span>
+   396→                      </div>
+   397→                    </button>
+   398→                  </motion.li>
+   399→                );
+   400→              })}
+   401→            </ul>
+   402→          )}
+   403→        </CardContent>
+   404→      </Card>
+   405→    </div>
+   406→  );
+   407→}
+   408→
+   409→function Header() {
+   410→  return (
+   411→    <header className="relative overflow-hidden">
+   412→      <div className="orb orb-md bg-violet-500/20 -top-20 -right-12" />
+   413→      <div className="orb orb-sm bg-fuchsia-500/15 -bottom-16 -left-10" />
+   414→      <div className="relative">
+   415→        <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
+   416→          Genel bakış
+   417→        </p>
+   418→        <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
+   419→          Panel
+   420→        </h1>
+   421→        <p className="text-sm text-muted-foreground mt-1">
+   422→          Üretim istatistiklerin ve genel bakış
+   423→        </p>
+   424→      </div>
+   425→    </header>
+   426→  );
+   427→}
+   428→
+   429→// ---------- KPI Card with count-up ----------
+   430→function KpiCard({
+   431→  icon: Icon,
+   432→  gradient,
+   433→  value,
+   434→  label,
+   435→  subtitle,
+   436→  formatDurationValue,
+   437→}: {
+   438→  icon: React.ComponentType<{ className?: string }>;
+   439→  gradient: string;
+   440→  value: number;
+   441→  label: string;
+   442→  subtitle: string;
+   443→  formatDurationValue?: boolean;
+   444→}) {
+   445→  const mv = useMotionValue(0);
+   446→  const [display, setDisplay] = React.useState("0");
+   447→  const displayRef = React.useRef<(s: string) => void>((s) => setDisplay(s));
+   448→
+   449→  React.useEffect(() => {
+   450→    const target = value;
+   451→    if (formatDurationValue) {
+   452→      // animate the second count
+   453→      const controls = animate(mv, target, {
+   454→        duration: 0.8,
+   455→        ease: "easeOut",
+   456→        onUpdate: (v) => {
+   457→          const m = Math.floor(v / 60);
+   458→          const s = Math.floor(v % 60);
+   459→          displayRef.current(`${m}d ${s}s`);
+   460→        },
+   461→      });
+   462→      return () => controls.stop();
+   463→    }
+   464→    const controls = animate(mv, target, {
+   465→      duration: 0.8,
+   466→      ease: "easeOut",
+   467→      onUpdate: (v) => {
+   468→        displayRef.current(String(Math.round(v)));
+   469→      },
+   470→    });
+   471→    return () => controls.stop();
+   472→  }, [value, formatDurationValue, mv]);
+   473→
+   474→  return (
+   475→    <motion.div variants={item}>
+   476→      <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group">
+   477→        <CardContent className="p-5">
+   478→          <div className="flex items-start justify-between">
+   479→            <div
+   480→              className={cn(
+   481→                "relative grid size-11 place-items-center rounded-xl bg-gradient-to-br text-white shadow-md",
+   482→                gradient
+   483→              )}
+   484→            >
+   485→              <Icon className="size-5" />
+   486→              {/* Rotating gradient ring on hover */}
+   487→              <span className="absolute -inset-1 rounded-xl ring-1 ring-fuchsia-500/30 opacity-0 group-hover:opacity-100 group-hover:rotate-45 transition-all duration-500 pointer-events-none" />
+   488→            </div>
+   489→            <ArrowRight className="size-4 text-muted-foreground/40 group-hover:text-fuchsia-500 group-hover:translate-x-0.5 transition-all" />
+   490→          </div>
+   491→          <div className="mt-4">
+   492→            <p className="text-3xl font-bold tracking-tight tabular-nums">
+   493→              {display}
+   494→            </p>
+   495→            <p className="text-sm font-medium mt-0.5">{label}</p>
+   496→            <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+   497→          </div>
+   498→        </CardContent>
+   499→      </Card>
+   500→    </motion.div>
+   501→  );
+   502→}
+   503→
+   504→// ---------- Donut pie chart ----------
+   505→function DistributionPie({
+   506→  data,
+   507→}: {
+   508→  data: { id: string; label: string; emoji: string; count: number }[];
+   509→}) {
+   510→  const total = data.reduce((a, b) => a + b.count, 0);
+   511→  if (total === 0) {
+   512→    return <EmptyChart label="Henüz veri yok" />;
+   513→  }
+   514→  const chartData = data.map((d) => ({
+   515→    name: `${d.emoji} ${d.label}`,
+   516→    value: d.count,
+   517→  }));
+   518→  return (
+   519→    <div className="flex flex-col sm:flex-row items-center gap-4">
+   520→      <div className="h-[200px] w-full sm:w-1/2">
+   521→        <ResponsiveContainer width="100%" height="100%">
+   522→          <PieChart>
+   523→            <Pie
+   524→              data={chartData}
+   525→              dataKey="value"
+   526→              nameKey="name"
+   527→              cx="50%"
+   528→              cy="50%"
+   529→              innerRadius={55}
+   530→              outerRadius={85}
+   531→              paddingAngle={3}
+   532→              stroke="rgba(0,0,0,0.2)"
+   533→              strokeWidth={1}
+   534→            >
+   535→              {chartData.map((_, i) => (
+   536→                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+   537→              ))}
+   538→            </Pie>
+   539→            <Tooltip
+   540→              contentStyle={{
+   541→                backgroundColor: "rgba(20,20,22,0.92)",
+   542→                border: "1px solid rgba(217,70,239,0.3)",
+   543→                borderRadius: 12,
+   544→                color: "#fff",
+   545→                fontSize: 12,
+   546→              }}
+   547→              formatter={(v: number, n: string) => [`${v} video`, n]}
+   548→            />
+   549→          </PieChart>
+   550→        </ResponsiveContainer>
+   551→      </div>
+   552→      <ul className="flex-1 w-full sm:w-1/2 space-y-1.5">
+   553→        {data.map((d, i) => {
+   554→          const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
+   555→          return (
+   556→            <li
+   557→              key={d.id}
+   558→              className="flex items-center justify-between gap-2 text-sm py-1"
+   559→            >
+   560→              <span className="flex items-center gap-2 min-w-0">
+   561→                <span
+   562→                  className="size-2.5 rounded-full shrink-0"
+   563→                  style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+   564→                />
+   565→                <span className="truncate">
+   566→                  {d.emoji} {d.label}
+   567→                </span>
+   568→              </span>
+   569→              <span className="flex items-center gap-2 shrink-0">
+   570→                <span className="text-xs text-muted-foreground tabular-nums">
+   571→                  %{pct}
+   572→                </span>
+   573→                <span className="font-semibold tabular-nums">{d.count}</span>
+   574→              </span>
+   575→            </li>
+   576→          );
+   577→        })}
+   578→      </ul>
+   579→    </div>
+   580→  );
+   581→}
+   582→
+   583→// ---------- Language horizontal bar ----------
+   584→function LanguageBar({
+   585→  data,
+   586→}: {
+   587→  data: { code: string; name: string; flag: string; count: number }[];
+   588→}) {
+   589→  const total = data.reduce((a, b) => a + b.count, 0);
+   590→  if (total === 0) {
+   591→    return <EmptyChart label="Henüz veri yok" />;
+   592→  }
+   593→  const chartData = data.map((d) => ({
+   594→    name: `${d.flag} ${d.code.toUpperCase()}`,
+   595→    fullName: d.name,
+   596→    value: d.count,
+   597→  }));
+   598→  return (
+   599→    <div className="h-[260px] w-full">
+   600→      <ResponsiveContainer width="100%" height="100%">
+   601→        <BarChart
+   602→          data={chartData}
+   603→          layout="vertical"
+   604→          margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+   605→        >
+   606→          <defs>
+   607→            <linearGradient id="langBar" x1="0" y1="0" x2="1" y2="0">
+   608→              <stop offset="0%" stopColor="#7c3aed" />
+   609→              <stop offset="100%" stopColor="#d946ef" />
+   610→            </linearGradient>
+   611→          </defs>
+   612→          <CartesianGrid
+   613→            strokeDasharray="3 3"
+   614→            stroke="currentColor"
+   615→            className="text-border/40"
+   616→            horizontal={false}
+   617→          />
+   618→          <XAxis
+   619→            type="number"
+   620→            tick={{ fontSize: 11, fill: "currentColor" }}
+   621→            className="text-muted-foreground"
+   622→            tickLine={false}
+   623→            axisLine={false}
+   624→            allowDecimals={false}
+   625→          />
+   626→          <YAxis
+   627→            type="category"
+   628→            dataKey="name"
+   629→            tick={{ fontSize: 12, fill: "currentColor" }}
+   630→            className="text-muted-foreground"
+   631→            tickLine={false}
+   632→            axisLine={false}
+   633→            width={70}
+   634→          />
+   635→          <Tooltip
+   636→            cursor={{ fill: "rgba(217,70,239,0.08)" }}
+   637→            contentStyle={{
+   638→              backgroundColor: "rgba(20,20,22,0.92)",
+   639→              border: "1px solid rgba(217,70,239,0.3)",
+   640→              borderRadius: 12,
+   641→              color: "#fff",
+   642→              fontSize: 12,
+   643→            }}
+   644→            formatter={(v: number, _n: string, item: any) => [
+   645→              `${v} video`,
+   646→              item?.payload?.fullName ?? "",
+   647→            ]}
+   648→          />
+   649→          <Bar
+   650→            dataKey="value"
+   651→            fill="url(#langBar)"
+   652→            radius={[0, 8, 8, 0]}
+   653→            minPointSize={4}
+   654→          >
+   655→            <LabelList
+   656→              dataKey="value"
+   657→              position="right"
+   658→              style={{ fill: "currentColor", fontSize: 11, fontWeight: 600 }}
+   659→              className="text-foreground"
+   660→            />
+   661→          </Bar>
+   662→        </BarChart>
+   663→      </ResponsiveContainer>
+   664→    </div>
+   665→  );
+   666→}
+   667→
+   668→// ---------- Provider usage card ----------
+   669→function ProviderUsageCard({
+   670→  title,
+   671→  icon: Icon,
+   672→  accent,
+   673→  data,
+   674→  resolver,
+   675→}: {
+   676→  title: string;
+   677→  icon: React.ComponentType<{ className?: string }>;
+   678→  accent: "violet" | "fuchsia";
+   679→  data: { id: string; count: number }[];
+   680→  resolver: (id: string) => string;
+   681→}) {
+   682→  const total = data.reduce((a, b) => a + b.count, 0);
+   683→  const accentClass =
+   684→    accent === "violet"
+   685→      ? "from-violet-500 to-fuchsia-500 text-violet-300"
+   686→      : "from-fuchsia-500 to-pink-500 text-fuchsia-300";
+   687→  return (
+   688→    <Card className="glass card-glow h-full">
+   689→      <CardHeader>
+   690→        <div className="flex items-center gap-2">
+   691→          <span
+   692→            className={cn(
+   693→              "grid size-8 place-items-center rounded-lg bg-gradient-to-br text-white shadow-md",
+   694→              accentClass
+   695→            )}
+   696→          >
+   697→            <Icon className="size-4" />
+   698→          </span>
+   699→          <div>
+   700→            <CardTitle className="text-base">{title}</CardTitle>
+   701→            <p className="text-xs text-muted-foreground">
+   702→              Toplam {total} kullanım
+   703→            </p>
+   704→          </div>
+   705→        </div>
+   706→      </CardHeader>
+   707→      <CardContent className="space-y-2">
+   708→        {data.length === 0 ? (
+   709→          <p className="text-sm text-muted-foreground py-4 text-center">
+   710→            Henüz veri yok
+   711→          </p>
+   712→        ) : (
+   713→          data.map((d, i) => {
+   714→            const name = resolver(d.id);
+   715→            const pct = total > 0 ? Math.round((d.count / total) * 100) : 0;
+   716→            return (
+   717→              <motion.div
+   718→                key={d.id + i}
+   719→                initial={{ opacity: 0, x: -8 }}
+   720→                animate={{ opacity: 1, x: 0 }}
+   721→                transition={{ delay: i * 0.04 }}
+   722→                className="flex items-center gap-3"
+   723→              >
+   724→                <div className="min-w-0 flex-1">
+   725→                  <div className="flex items-center justify-between text-sm mb-1">
+   726→                    <span className="truncate font-medium">{name}</span>
+   727→                    <span className="text-xs text-muted-foreground tabular-nums">
+   728→                      {d.count} · %{pct}
+   729→                    </span>
+   730→                  </div>
+   731→                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+   732→                    <div
+   733→                      className={cn(
+   734→                        "h-full rounded-full bg-gradient-to-r",
+   735→                        accentClass
+   736→                      )}
+   737→                      style={{ width: `${pct}%` }}
+   738→                    />
+   739→                  </div>
+   740→                </div>
+   741→                <Badge
+   742→                  variant="outline"
+   743→                  className={cn("shrink-0", accentClass)}
+   744→                >
+   745→                  {d.count}
+   746→                </Badge>
+   747→              </motion.div>
+   748→            );
+   749→          })
+   750→        )}
+   751→      </CardContent>
+   752→    </Card>
+   753→  );
+   754→}
+   755→
+   756→// ---------- Status pill ----------
+   757→function StatusPill({ status }: { status: VideoProject["status"] }) {
+   758→  const map: Record<VideoProject["status"], { label: string; cls: string }> = {
+   759→    draft: {
+   760→      label: "Taslak",
+   761→      cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
+   762→    },
+   763→    generating: {
+   764→      label: "Üretiliyor",
+   765→      cls: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+   766→    },
+   767→    ready: {
+   768→      label: "Hazır",
+   769→      cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+   770→    },
+   771→    error: {
+   772→      label: "Hata",
+   773→      cls: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+   774→    },
+   775→  };
+   776→  const m = map[status];
+   777→  return (
+   778→    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", m.cls)}>
+   779→      {m.label}
+   780→    </Badge>
+   781→  );
+   782→}
+   783→
+   784→function EmptyChart({ label }: { label: string }) {
+   785→  return (
+   786→    <div className="h-[200px] grid place-items-center text-sm text-muted-foreground">
+   787→      {label}
+   788→    </div>
+   789→  );
+   790→}
+   791→
+   792→// ---------- Skeleton ----------
+   793→function DashboardSkeleton() {
+   794→  return (
+   795→    <div className="space-y-6">
+   796→      <div className="space-y-2">
+   797→        <Skeleton className="h-3 w-24" />
+   798→        <Skeleton className="h-9 w-32" />
+   799→        <Skeleton className="h-4 w-64" />
+   800→      </div>
+   801→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   802→        {Array.from({ length: 4 }).map((_, i) => (
+   803→          <Skeleton key={i} className="h-32 rounded-2xl" />
+   804→        ))}
+   805→      </div>
+   806→      <Skeleton className="h-[280px] rounded-2xl" />
+   807→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   808→        <Skeleton className="h-[280px] rounded-2xl" />
+   809→        <Skeleton className="h-[280px] rounded-2xl" />
+   810→      </div>
+   811→      <Skeleton className="h-[280px] rounded-2xl" />
+   812→    </div>
+   813→  );
+   814→}
+   815→

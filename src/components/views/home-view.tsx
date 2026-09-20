@@ -215,9 +215,9 @@ export function HomeView() {
             AI Video Creator
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-balance">
-            <span className="brand-gradient-text animated-gradient-x bg-[length:200%_100%] inline-block">AI ile saniyeler</span>
+            <span className="accent-text glow-text inline-block">AI ile saniyeler</span>
             <br />
-            içinde video üret
+            <span className="accent-text glow-text inline-block">içinde video üret</span>
           </h1>
           <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
             Hyperframes animasyonları, LLM senaryo, TTS seslendirme, çoklu dil ve
@@ -232,7 +232,7 @@ export function HomeView() {
                 setWizard({ step: 0 });
                 go("create");
               }}
-              className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
+              className="accent-gradient text-white shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden border-0"
             >
               <Wand2 className="size-4" />
               Hemen Başla
@@ -289,11 +289,11 @@ export function HomeView() {
               >
                 <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden hover:border-fuchsia-500/40 relative gradient-border">
                   <div
-                    className={`h-1.5 w-full bg-gradient-to-r animated-gradient-x bg-[length:200%_100%] ${mode.gradient}`}
+                    className="h-1.5 w-full accent-gradient animated-gradient-x bg-[length:200%_100%]"
                   />
                   <CardHeader>
                     <div
-                      className={`grid size-12 place-items-center rounded-xl bg-gradient-to-br ${mode.gradient} text-2xl shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6`}
+                      className="grid size-12 place-items-center rounded-xl accent-gradient text-2xl shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6"
                     >
                       {mode.emoji}
                     </div>
@@ -303,6 +303,8 @@ export function HomeView() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="mt-auto">
+                    {/* divider-gradient underline on hover */}
+                    <div className="divider-gradient opacity-0 group-hover:opacity-100 transition-opacity mb-2" aria-hidden />
                     <span className="inline-flex items-center gap-1 text-sm font-medium text-fuchsia-500 transition-all group-hover:gap-2">
                       Başla <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
                     </span>
@@ -339,14 +341,14 @@ export function HomeView() {
                     <CardContent className="pt-8 pb-6 px-6">
                       <div className="relative mx-auto mb-4 size-16">
                         <div
-                          className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${s.color} blur-md opacity-50 group-hover:opacity-80 transition-opacity`}
+                          className="absolute inset-0 rounded-2xl accent-gradient blur-md opacity-50 group-hover:opacity-80 transition-opacity"
                         />
                         <div
-                          className={`relative grid size-16 place-items-center rounded-2xl bg-gradient-to-br ${s.color} text-white shadow-lg ring-2 ring-white/10`}
+                          className="relative grid size-16 place-items-center rounded-2xl accent-gradient text-white shadow-lg ring-2 ring-white/10"
                         >
                           <Icon className="size-7" />
                         </div>
-                        <span className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-background border-2 border-fuchsia-500 text-xs font-bold text-fuchsia-500 pulse-glow">
+                        <span className="absolute -top-2 -right-2 grid size-7 place-items-center rounded-full bg-background border-2 border-fuchsia-500 text-xs font-bold accent-text pulse-glow">
                           {s.step}
                         </span>
                       </div>
@@ -389,7 +391,7 @@ export function HomeView() {
                 <Card className="glass card-glow shine-on-hover card-hover-lift h-full hover:border-fuchsia-500/40 transition-colors group">
                   <CardHeader>
                     <div
-                      className={`relative grid size-10 place-items-center rounded-xl bg-gradient-to-br ${f.color} text-white shadow-md transition-transform group-hover:rotate-6 group-hover:scale-105`}
+                      className="relative grid size-10 place-items-center rounded-xl accent-gradient text-white shadow-md transition-transform group-hover:rotate-6 group-hover:scale-105"
                     >
                       <Icon className="size-5" />
                       {/* gradient ring on hover */}

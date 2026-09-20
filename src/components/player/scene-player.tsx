@@ -11,6 +11,9 @@ import {
   Maximize2,
   SkipBack,
   SkipForward,
+  Repeat,
+  Repeat1,
+  Gauge,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { VideoProject } from "@/lib/types";
@@ -18,6 +21,14 @@ import { STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
 import { cn } from "@/lib/utils";
 import { SceneRenderer } from "./scene-renderer";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface ScenePlayerProps {
   project: VideoProject;
@@ -50,6 +61,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
   const [showSubtitles, setShowSubtitles] = React.useState(true);
   const [ready, setReady] = React.useState(false);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [playbackRate, setPlaybackRate] = React.useState(1);
+  const [loop, setLoop] = React.useState(false);
+
+  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const stageRef = React.useRef<HTMLDivElement | null>(null);
@@ -82,7 +97,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
     }
     const tick = (t: number) => {
       if (lastTickRef.current == null) lastTickRef.current = t;
-      const dt = t - lastTickRef.current;
+      const dt = (t - lastTickRef.current) * playbackRate;
       lastTickRef.current = t;
       setElapsedInScene((prev) => {
         const next = prev + dt;
@@ -91,6 +106,10 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
           // advance scene
           const nextIndex = currentSceneIndex + 1;
           if (nextIndex >= scenes.length) {
+            if (loop) {
+              setCurrentSceneIndex(0);
+              return 0;
+            }
             setIsPlaying(false);
             return dur;
           }
@@ -106,7 +125,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       lastTickRef.current = null;
     };
-  }, [isPlaying, currentScene, currentSceneIndex, scenes.length]);
+  }, [isPlaying, currentScene, currentSceneIndex, scenes.length, playbackRate, loop]);
 
   // Audio sync
   React.useEffect(() => {
@@ -118,6 +137,31 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
       audio.pause();
     }
   }, [isPlaying, ready]);
+
+  // Audio playback rate sync
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  // Audio ended → loop or stop
+  React.useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onEnded = () => {
+      if (loop) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+        setCurrentSceneIndex(0);
+        setElapsedInScene(0);
+      } else {
+        setIsPlaying(false);
+      }
+    };
+    audio.addEventListener("ended", onEnded);
+    return () => audio.removeEventListener("ended", onEnded);
+  }, [loop]);
 
   React.useEffect(() => {
     const audio = audioRef.current;
@@ -187,6 +231,90 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
+
+  // Keyboard shortcuts (only active when player is in view / focused)
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Don't intercept when typing in inputs/textareas/contenteditable
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable || target.tagName === "SELECT")) {
+        return;
+      }
+      // Only handle when the stage is in viewport
+      const stage = stageRef.current;
+      if (!stage) return;
+      const rect = stage.getBoundingClientRect();
+      const inView = rect.top < window.innerHeight && rect.bottom > 0;
+      if (!inView) return;
+
+      switch (e.key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          handleTogglePlay();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          seekByDelta(-3000);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          seekByDelta(3000);
+          break;
+        case "j":
+          e.preventDefault();
+          seekByDelta(-10000);
+          break;
+        case "l":
+          e.preventDefault();
+          seekByDelta(10000);
+          break;
+        case "m":
+          e.preventDefault();
+          setIsMuted((m) => !m);
+          break;
+        case "f":
+          e.preventDefault();
+          handleFullscreen();
+          break;
+        case "c":
+          e.preventDefault();
+          setShowSubtitles((s) => !s);
+          break;
+        case "r":
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            setLoop((l) => !l);
+          }
+          break;
+        case ",":
+          e.preventDefault();
+          setPlaybackRate((p) => Math.max(0.5, +(p - 0.25).toFixed(2)));
+          break;
+        case ".":
+          e.preventDefault();
+          setPlaybackRate((p) => Math.min(2, +(p + 0.25).toFixed(2)));
+          break;
+        case "Home":
+          e.preventDefault();
+          handleSeek(0);
+          break;
+        case "End":
+          e.preventDefault();
+          handleSeek(totalMs);
+          break;
+        default:
+          // number keys 0-9 → seek to N/10 of total
+          if (/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+            handleSeek((Number(e.key) / 10) * totalMs);
+          }
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [totalMs, playbackRate, loop]);
 
   if (!scenes.length) {
     return (
@@ -264,7 +392,20 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               <span className="hidden sm:inline">{langInfo.nativeName}</span>
             </span>
           )}
+          {loop && (
+            <span className="rounded-full bg-fuchsia-500/30 backdrop-blur-sm px-2 py-1 text-xs text-fuchsia-200 flex items-center gap-1 border border-fuchsia-500/40">
+              <Repeat1 className="size-3" /> Döngü
+            </span>
+          )}
+          {playbackRate !== 1 && (
+            <span className="rounded-full bg-violet-500/30 backdrop-blur-sm px-2 py-1 text-xs text-violet-200 border border-violet-500/40">
+              {playbackRate}x
+            </span>
+          )}
         </div>
+
+        {/* Keyboard shortcuts hint (top-right, fades after a few seconds) */}
+        <KeyboardHint />
 
         {/* Controls bar */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent p-3 pt-8">
@@ -363,6 +504,57 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
             </div>
 
             <div className="ml-auto flex items-center gap-1">
+              {/* Playback speed */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-9 rounded-full px-2.5 text-xs font-medium text-white hover:bg-white/15 hover:text-white gap-1",
+                      playbackRate !== 1 && "bg-white/20"
+                    )}
+                    aria-label="Oynatma hızı"
+                    title="Oynatma hızı"
+                  >
+                    <Gauge className="size-4" />
+                    {playbackRate !== 1 ? `${playbackRate}x` : "Hız"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-28">
+                  <DropdownMenuLabel>Oynatma Hızı</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {SPEEDS.map((s) => (
+                    <DropdownMenuItem
+                      key={s}
+                      onClick={() => setPlaybackRate(s)}
+                      className={cn(
+                        "flex items-center justify-between gap-2 cursor-pointer",
+                        s === playbackRate && "bg-accent"
+                      )}
+                    >
+                      <span>{s === 1 ? "Normal (1x)" : `${s}x`}</span>
+                      {s === playbackRate && <span className="text-fuchsia-500">✓</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Loop toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "size-9 rounded-full text-white hover:bg-white/15 hover:text-white",
+                  loop && "bg-white/20 text-fuchsia-300"
+                )}
+                onClick={() => setLoop((l) => !l)}
+                aria-label={loop ? "Tekrarı kapat" : "Tekrarı aç"}
+                title="Tekrar (R)"
+              >
+                {loop ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />}
+              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -372,7 +564,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                 )}
                 onClick={() => setShowSubtitles((s) => !s)}
                 aria-label="Altyazılar"
-                title="Altyazılar"
+                title="Altyazılar (C)"
               >
                 {showSubtitles ? (
                   <Captions className="size-4" />
@@ -386,6 +578,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                 className="size-9 rounded-full text-white hover:bg-white/15 hover:text-white"
                 onClick={handleFullscreen}
                 aria-label="Tam ekran"
+                title="Tam ekran (F)"
               >
                 <Maximize2 className="size-4" />
               </Button>
@@ -450,5 +643,73 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
         ))}
       </div>
     </div>
+  );
+};
+
+// Keyboard shortcuts hint that fades in/out on the player
+function KeyboardHint() {
+  const [visible, setVisible] = React.useState(false);
+  const [dismissed, setDismissed] = React.useState(false);
+
+  React.useEffect(() => {
+    if (dismissed) return;
+    const t1 = setTimeout(() => setVisible(true), 800);
+    const t2 = setTimeout(() => setVisible(false), 6500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [dismissed]);
+
+  if (dismissed) return null;
+
+  const shortcuts: [string, string][] = [
+    ["Space", "Oynat / Duraklat"],
+    ["← / →", "3 sn geri / ileri"],
+    ["J / L", "10 sn geri / ileri"],
+    ["M", "Sesi kapat"],
+    ["F", "Tam ekran"],
+    ["C", "Altyazı"],
+    ["R", "Tekrar"],
+    [", / .", "Hız ↓ / ↑"],
+    ["0-9", "%10'a atla"],
+  ];
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: -8, x: 8 }}
+          animate={{ opacity: 1, y: 0, x: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3 }}
+          className="absolute top-3 right-3 max-w-[240px] rounded-xl bg-black/80 backdrop-blur-md border border-white/15 p-3 shadow-2xl"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+              Klavye Kısayolları
+            </span>
+            <button
+              onClick={() => setDismissed(true)}
+              className="text-white/60 hover:text-white text-xs"
+              aria-label="Kapat"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            {shortcuts.map(([key, label]) => (
+              <div key={key} className="flex items-center gap-1.5">
+                <kbd className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-mono text-white border border-white/10">
+                  {key}
+                </kbd>
+                <span className="text-[10px] text-white/70 truncate">{label}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
