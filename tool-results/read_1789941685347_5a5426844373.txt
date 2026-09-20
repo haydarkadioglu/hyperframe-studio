@@ -1,0 +1,1514 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Wand2,
+     7→  ArrowLeft,
+     8→  ArrowRight,
+     9→  Check,
+    10→  ImagePlus,
+    11→  Trash2,
+    12→  Loader2,
+    13→  Sparkles,
+    14→  Eye,
+    15→  Clapperboard,
+    16→  Info,
+    17→  Upload,
+    18→  FileText,
+    19→  Globe,
+    20→  AudioLines,
+    21→  Palette,
+    22→  RectangleHorizontal,
+    23→  Cpu,
+    24→  Mic,
+    25→  Receipt,
+    26→  Lightbulb,
+    27→  ChevronDown,
+    28→} from "lucide-react";
+    29→import { useApp } from "@/lib/store";
+    30→import {
+    31→  MODES,
+    32→  MODE_MAP,
+    33→  LANGUAGES,
+    34→  TONES,
+    35→  STYLES,
+    36→  LLM_PROVIDERS,
+    37→  TTS_PROVIDERS,
+    38→  getVoicesForProvider,
+    39→  recommendVoice,
+    40→} from "@/lib/providers";
+    41→import type {
+    42→  VideoMode,
+    43→  Tone,
+    44→  VideoStyle,
+    45→  AspectRatio,
+    46→  AnalyzeProductResponse,
+    47→} from "@/lib/types";
+    48→import {
+    49→  Card,
+    50→  CardContent,
+    51→  CardHeader,
+    52→  CardTitle,
+    53→  CardDescription,
+    54→} from "@/components/ui/card";
+    55→import { Button } from "@/components/ui/button";
+    56→import { Input } from "@/components/ui/input";
+    57→import { Textarea } from "@/components/ui/textarea";
+    58→import { Label } from "@/components/ui/label";
+    59→import { Badge } from "@/components/ui/badge";
+    60→import { Slider } from "@/components/ui/slider";
+    61→import {
+    62→  Collapsible,
+    63→  CollapsibleTrigger,
+    64→  CollapsibleContent,
+    65→} from "@/components/ui/collapsible";
+    66→import {
+    67→  Select,
+    68→  SelectTrigger,
+    69→  SelectValue,
+    70→  SelectContent,
+    71→  SelectItem,
+    72→} from "@/components/ui/select";
+    73→import { toast } from "sonner";
+    74→import { cn } from "@/lib/utils";
+    75→import {
+    76→  createProject,
+    77→  renderProject,
+    78→  analyzeProduct,
+    79→  uploadImage,
+    80→  fileToDataUrl,
+    81→  suggestPrompts,
+    82→} from "@/lib/api-client";
+    83→
+    84→const STEPS = ["Mod", "İçerik", "Yapılandırma", "Özet & Üret"];
+    85→
+    86→const ASPECTS: { id: AspectRatio; label: string; hint: string }[] = [
+    87→  { id: "16:9", label: "16:9", hint: "Yatay (YouTube)" },
+    88→  { id: "9:16", label: "9:16", hint: "Dikey (Shorts/Reels)" },
+    89→  { id: "1:1", label: "1:1", hint: "Kare (Instagram)" },
+    90→  { id: "4:5", label: "4:5", hint: "Dikey poster" },
+    91→];
+    92→
+    93→export function CreateView() {
+    94→  const wizard = useApp((s) => s.wizard);
+    95→  const setWizard = useApp((s) => s.setWizard);
+    96→  const resetWizard = useApp((s) => s.resetWizard);
+    97→  const go = useApp((s) => s.go);
+    98→
+    99→  const step = wizard.step;
+   100→
+   101→  const setStep = (next: number) => setWizard({ step: next });
+   102→
+   103→  const canNext = React.useMemo(() => {
+   104→    if (step === 0) return Boolean(wizard.mode);
+   105→    if (step === 1) {
+   106→      if (wizard.mode === "topic") return wizard.topic.trim().length >= 3;
+   107→      if (wizard.mode === "youtube") return wizard.topic.trim().length >= 3;
+   108→      if (wizard.mode === "product") return wizard.productImages.length > 0;
+   109→      if (wizard.mode === "script") return wizard.customScript.trim().length >= 30;
+   110→    }
+   111→    return true;
+   112→  }, [step, wizard]);
+   113→
+   114→  return (
+   115→    <div className="space-y-6">
+   116→      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+   117→        <div>
+   118→          <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
+   119→            Yeni Video
+   120→          </p>
+   121→          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
+   122→            Video Oluştur
+   123→          </h1>
+   124→          <p className="text-sm text-muted-foreground mt-1">
+   125→            4 adımda videonuzu üretin.
+   126→          </p>
+   127→        </div>
+   128→        <Button
+   129→          variant="ghost"
+   130→          size="sm"
+   131→          onClick={() => {
+   132→            resetWizard();
+   133→            go("home");
+   134→          }}
+   135→        >
+   136→          Sıfırla
+   137→        </Button>
+   138→      </header>
+   139→
+   140→      {/* Step indicator - connected progress bar */}
+   141→      <div className="relative">
+   142→        <ol className="flex items-center gap-2">
+   143→          {STEPS.map((label, i) => {
+   144→            const active = i === step;
+   145→            const done = i < step;
+   146→            return (
+   147→              <li key={label} className="flex items-center gap-2 flex-1 min-w-0">
+   148→                <button
+   149→                  onClick={() => i < step && setStep(i)}
+   150→                  disabled={i > step}
+   151→                  className={cn(
+   152→                    "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-all min-h-[36px] shrink-0",
+   153→                    active
+   154→                      ? "accent-border bg-accent/10 text-foreground pulse-glow"
+   155→                      : done
+   156→                      ? "accent-border bg-accent/5 hover:bg-accent/10"
+   157→                      : "border-border text-muted-foreground cursor-not-allowed"
+   158→                  )}
+   159→                >
+   160→                  <span
+   161→                    className={cn(
+   162→                      "relative grid size-5 place-items-center rounded-full text-[10px]",
+   163→                      active
+   164→                        ? "accent-gradient text-white"
+   165→                        : done
+   166→                        ? "accent-gradient text-white"
+   167→                        : "bg-muted text-muted-foreground"
+   168→                    )}
+   169→                  >
+   170→                    {active && (
+   171→                      <span className="absolute inset-0 rounded-full accent-dot opacity-60" aria-hidden />
+   172→                    )}
+   173→                    <span className="relative">
+   174→                      {done ? <Check className="size-3" /> : i + 1}
+   175→                    </span>
+   176→                  </span>
+   177→                  <span className="hidden sm:inline">{label}</span>
+   178→                </button>
+   179→                {i < STEPS.length - 1 && (
+   180→                  <span
+   181→                    className={cn(
+   182→                      "h-px flex-1 transition-colors",
+   183→                      done
+   184→                        ? "accent-gradient animated-gradient-x bg-[length:200%_100%]"
+   185→                        : "bg-border"
+   186→                    )}
+   187→                  />
+   188→                )}
+   189→              </li>
+   190→            );
+   191→          })}
+   192→        </ol>
+   193→      </div>
+   194→
+   195→      <AnimatePresence mode="wait">
+   196→        <motion.div
+   197→          key={step}
+   198→          initial={{ opacity: 0, y: 14 }}
+   199→          animate={{ opacity: 1, y: 0 }}
+   200→          exit={{ opacity: 0, y: -10 }}
+   201→          transition={{ duration: 0.3 }}
+   202→        >
+   203→          {step === 0 && <StepMode />}
+   204→          {step === 1 && <StepContent />}
+   205→          {step === 2 && <StepConfig />}
+   206→          {step === 3 && <StepSummary />}
+   207→        </motion.div>
+   208→      </AnimatePresence>
+   209→
+   210→      {/* Nav buttons */}
+   211→      <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
+   212→        <Button
+   213→          variant="ghost"
+   214→          onClick={() => {
+   215→            if (step === 0) go("home");
+   216→            else setStep(step - 1);
+   217→          }}
+   218→          className="min-h-[44px]"
+   219→        >
+   220→          <ArrowLeft className="size-4" />
+   221→          {step === 0 ? "İptal" : "Geri"}
+   222→        </Button>
+   223→        {step < 3 && (
+   224→          <Button
+   225→            onClick={() => canNext && setStep(step + 1)}
+   226→            disabled={!canNext}
+   227→            className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 min-h-[44px]"
+   228→          >
+   229→            İleri
+   230→            <ArrowRight className="size-4" />
+   231→          </Button>
+   232→        )}
+   233→      </div>
+   234→    </div>
+   235→  );
+   236→}
+   237→
+   238→// ---------- Step 0: Mode ----------
+   239→function StepMode() {
+   240→  const wizard = useApp((s) => s.wizard);
+   241→  const setWizard = useApp((s) => s.setWizard);
+   242→  return (
+   243→    <div className="space-y-4">
+   244→      <p className="text-sm text-muted-foreground">
+   245→        Videonuzun tipini seçin. Bu, hangi içeriği girmeniz gerektiğini
+   246→        belirler.
+   247→      </p>
+   248→      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+   249→        {MODES.map((m) => {
+   250→          const active = wizard.mode === m.id;
+   251→          return (
+   252→            <button
+   253→              key={m.id}
+   254→              onClick={() => setWizard({ mode: m.id as VideoMode })}
+   255→              className={cn(
+   256→                "group text-left transition-transform",
+   257→                active ? "ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-background rounded-2xl scale-[1.02] accent-ring" : ""
+   258→              )}
+   259→            >
+   260→              <Card
+   261→                className={cn(
+   262→                  "h-full overflow-hidden transition-all shine-on-hover card-hover-lift relative",
+   263→                  active
+   264→                    ? "border-fuchsia-500/60"
+   265→                    : "hover:border-fuchsia-500/30"
+   266→                )}
+   267→              >
+   268→                <div className={cn("h-1.5 w-full bg-gradient-to-r animated-gradient-x bg-[length:200%_100%]", m.gradient)} />
+   269→                <CardHeader>
+   270→                  <div className="flex items-start justify-between">
+   271→                    <div
+   272→                      className={cn(
+   273→                        "grid size-12 place-items-center rounded-xl bg-gradient-to-br text-2xl shadow-md transition-transform group-hover:scale-110 group-hover:-rotate-3",
+   274→                        m.gradient
+   275→                      )}
+   276→                    >
+   277→                      {m.emoji}
+   278→                    </div>
+   279→                    {active && (
+   280→                      <Badge className="bg-fuchsia-500 border-0 text-white">
+   281→                        <Check className="size-3" />
+   282→                        Seçili
+   283→                      </Badge>
+   284→                    )}
+   285→                  </div>
+   286→                  <CardTitle className="mt-3">{m.label}</CardTitle>
+   287→                  <CardDescription>{m.description}</CardDescription>
+   288→                </CardHeader>
+   289→              </Card>
+   290→            </button>
+   291→          );
+   292→        })}
+   293→      </div>
+   294→    </div>
+   295→  );
+   296→}
+   297→
+   298→// ---------- Step 1: Content ----------
+   299→function StepContent() {
+   300→  const wizard = useApp((s) => s.wizard);
+   301→  const setWizard = useApp((s) => s.setWizard);
+   302→
+   303→  if (wizard.mode === "product") return <ProductMode />;
+   304→  if (wizard.mode === "script") return <ScriptMode />;
+   305→  if (wizard.mode === "youtube") return <YoutubeMode />;
+   306→  // default: topic
+   307→  return <TopicMode />;
+   308→}
+   309→
+   310→function TopicMode() {
+   311→  const wizard = useApp((s) => s.wizard);
+   312→  const setWizard = useApp((s) => s.setWizard);
+   313→  return (
+   314→    <Card className="glass card-glow overflow-hidden">
+   315→      <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:200%_100%]" />
+   316→      <CardHeader>
+   317→        <CardTitle className="flex items-center gap-2">
+   318→          <span className="grid size-7 place-items-center rounded-lg bg-violet-500/20 text-violet-500">
+   319→            <Sparkles className="size-4" />
+   320→          </span>
+   321→          Konu / Başlık
+   322→        </CardTitle>
+   323→        <CardDescription>
+   324→          Videonuz ne hakkında olsun? Bir cümle, anahtar kelimeler veya uzun bir
+   325→          açıklama yazabilirsiniz.
+   326→        </CardDescription>
+   327→      </CardHeader>
+   328→      <CardContent className="space-y-4">
+   329→        <div className="space-y-2">
+   330→          <Label htmlFor="topic">Konu</Label>
+   331→          <Textarea
+   332→            id="topic"
+   333→            value={wizard.topic}
+   334→            onChange={(e) => setWizard({ topic: e.target.value })}
+   335→            placeholder="Örn: Yapay zekânın eğitim üzerindeki etkileri"
+   336→            className="min-h-24"
+   337→          />
+   338→        </div>
+   339→        <PromptSuggestions
+   340→          mode="topic"
+   341→          topic={wizard.topic}
+   342→          language={wizard.language}
+   343→          onPick={(idea) => {
+   344→            setWizard({ topic: idea });
+   345→            toast.success("Konu seçildi");
+   346→          }}
+   347→        />
+   348→        <div className="space-y-2">
+   349→          <div className="flex items-center justify-between">
+   350→            <Label>Sahne sayısı</Label>
+   351→            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+   352→          </div>
+   353→          <Slider
+   354→            min={3}
+   355→            max={8}
+   356→            step={1}
+   357→            value={[wizard.targetScenes]}
+   358→            onValueChange={(v) => setWizard({ targetScenes: v[0] })}
+   359→          />
+   360→          <p className="text-xs text-muted-foreground">
+   361→            3-8 sahne arası önerilir. Her sahne ~4-8 saniye sürer.
+   362→          </p>
+   363→        </div>
+   364→      </CardContent>
+   365→    </Card>
+   366→  );
+   367→}
+   368→
+   369→function YoutubeMode() {
+   370→  const wizard = useApp((s) => s.wizard);
+   371→  const setWizard = useApp((s) => s.setWizard);
+   372→  return (
+   373→    <Card className="glass card-glow overflow-hidden">
+   374→      <div className="h-0.5 w-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 animated-gradient-x bg-[length:200%_100%]" />
+   375→      <CardHeader>
+   376→        <CardTitle className="flex items-center gap-2">
+   377→          <span className="grid size-7 place-items-center rounded-lg bg-rose-500/20 text-rose-500">
+   378→            <Clapperboard className="size-4" />
+   379→          </span>
+   380→          YouTube İçeriği
+   381→        </CardTitle>
+   382→        <CardDescription>
+   383→          Konuyu girin, AI videoyu YouTube için optimize etsin. SRT/VTT
+   384→          altyazıları üretim sonrası indirebilirsiniz.
+   385→        </CardDescription>
+   386→      </CardHeader>
+   387→      <CardContent className="space-y-4">
+   388→        <div className="space-y-2">
+   389→          <Label htmlFor="yt-topic">Video konusu</Label>
+   390→          <Textarea
+   391→            id="yt-topic"
+   392→            value={wizard.topic}
+   393→            onChange={(e) => setWizard({ topic: e.target.value })}
+   394→            placeholder="Örn: 5 verimlilik ipucu (Shorts için ideal)"
+   395→            className="min-h-24"
+   396→          />
+   397→        </div>
+   398→        <PromptSuggestions
+   399→          mode="youtube"
+   400→          topic={wizard.topic}
+   401→          language={wizard.language}
+   402→          onPick={(idea) => {
+   403→            setWizard({ topic: idea });
+   404→            toast.success("Konu seçildi");
+   405→          }}
+   406→        />
+   407→        <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex gap-3">
+   408→          <Info className="size-5 text-rose-500 shrink-0" />
+   409→          <div className="text-sm space-y-1">
+   410→            <p className="font-medium text-foreground">YouTube Altyazı Notu</p>
+   411→            <p className="text-muted-foreground">
+   412→              Üretim tamamlandığında, <strong>SRT</strong> ve <strong>VTT</strong>{" "}
+   413→              dosyalarını video detay sayfasından indirebilirsiniz. Sahne
+   414→              sürelerine göre zamanlanmıştır.
+   415→            </p>
+   416→          </div>
+   417→        </div>
+   418→        <div className="space-y-2">
+   419→          <div className="flex items-center justify-between">
+   420→            <Label>Sahne sayısı</Label>
+   421→            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+   422→          </div>
+   423→          <Slider
+   424→            min={3}
+   425→            max={8}
+   426→            step={1}
+   427→            value={[wizard.targetScenes]}
+   428→            onValueChange={(v) => setWizard({ targetScenes: v[0] })}
+   429→          />
+   430→        </div>
+   431→      </CardContent>
+   432→    </Card>
+   433→  );
+   434→}
+   435→
+   436→// =========================================================
+   437→// Shared prompt suggestions panel for TopicMode + YoutubeMode
+   438→// =========================================================
+   439→function PromptSuggestions({
+   440→  mode,
+   441→  topic,
+   442→  language,
+   443→  onPick,
+   444→}: {
+   445→  mode: string;
+   446→  topic: string;
+   447→  language: string;
+   448→  onPick: (idea: string) => void;
+   449→}) {
+   450→  const [open, setOpen] = React.useState(false);
+   451→  const [curated, setCurated] = React.useState<string[]>([]);
+   452→  const [ai, setAi] = React.useState<string[]>([]);
+   453→  const [loadingCurated, setLoadingCurated] = React.useState(false);
+   454→  const [loadingAi, setLoadingAi] = React.useState(false);
+   455→  const [aiFetched, setAiFetched] = React.useState(false);
+   456→
+   457→  // Fetch curated ideas whenever the panel is opened (mode/language can change)
+   458→  React.useEffect(() => {
+   459→    if (!open) return;
+   460→    let alive = true;
+   461→    setLoadingCurated(true);
+   462→    setCurated([]);
+   463→    setAi([]);
+   464→    setAiFetched(false);
+   465→    suggestPrompts({ mode, language })
+   466→      .then((res) => {
+   467→        if (!alive) return;
+   468→        setCurated(res.curated || []);
+   469→      })
+   470→      .catch(() => {
+   471→        if (alive) setCurated([]);
+   472→      })
+   473→      .finally(() => {
+   474→        if (alive) setLoadingCurated(false);
+   475→      });
+   476→    return () => {
+   477→      alive = false;
+   478→    };
+   479→  }, [open, mode, language]);
+   480→
+   481→  const fetchAi = React.useCallback(async () => {
+   482→    if (topic.trim().length < 3) return;
+   483→    setLoadingAi(true);
+   484→    try {
+   485→      const res = await suggestPrompts({ topic, mode, language });
+   486→      setAi(res.ai || []);
+   487→      setAiFetched(true);
+   488→    } catch {
+   489→      setAi([]);
+   490→      setAiFetched(true);
+   491→    } finally {
+   492→      setLoadingAi(false);
+   493→    }
+   494→  }, [topic, mode, language]);
+   495→
+   496→  const canAi = topic.trim().length >= 3;
+   497→
+   498→  const pickIdea = (idea: string) => {
+   499→    onPick(idea);
+   500→    setOpen(false);
+   501→  };
+   502→
+   503→  return (
+   504→    <Collapsible open={open} onOpenChange={setOpen}>
+   505→      <CollapsibleTrigger asChild>
+   506→        <button
+   507→          type="button"
+   508→          className={cn(
+   509→            "group flex items-center justify-between gap-2 w-full rounded-xl border border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10 px-3 py-2 text-sm transition-colors",
+   510→            open && "bg-violet-500/10"
+   511→          )}
+   512→        >
+   513→          <span className="flex items-center gap-2">
+   514→            <span className="grid size-6 place-items-center rounded-md bg-violet-500/20 text-violet-500">
+   515→              <Lightbulb className="size-3.5" />
+   516→            </span>
+   517→            <span className="font-medium">💡 Konu Önerileri</span>
+   518→          </span>
+   519→          <ChevronDown
+   520→            className={cn(
+   521→              "size-4 text-muted-foreground transition-transform duration-200",
+   522→              open && "rotate-180"
+   523→            )}
+   524→          />
+   525→        </button>
+   526→      </CollapsibleTrigger>
+   527→      <CollapsibleContent className="data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-top-2">
+   528→        <div className="mt-3 space-y-3">
+   529→          {/* Curated ideas */}
+   530→          <div className="space-y-2">
+   531→            <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+   532→              Hazır Konular
+   533→            </p>
+   534→            {loadingCurated ? (
+   535→              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   536→                <Loader2 className="size-3 animate-spin" />
+   537→                Yükleniyor...
+   538→              </div>
+   539→            ) : curated.length > 0 ? (
+   540→              <div className="flex flex-wrap gap-1.5">
+   541→                {curated.map((idea, i) => (
+   542→                  <motion.button
+   543→                    key={idea + i}
+   544→                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+   545→                    animate={{ opacity: 1, y: 0, scale: 1 }}
+   546→                    transition={{ delay: i * 0.04 }}
+   547→                    onClick={() => pickIdea(idea)}
+   548→                    className="accent-bg-soft accent-text-soft accent-border hover:brightness-110 rounded-full px-3 py-1 text-xs transition-all text-left max-w-full badge-pop"
+   549→                  >
+   550→                    {idea}
+   551→                  </motion.button>
+   552→                ))}
+   553→              </div>
+   554→            ) : (
+   555→              <p className="text-xs text-muted-foreground">Şu an için öneri yok.</p>
+   556→            )}
+   557→          </div>
+   558→
+   559→          {/* AI enhancement */}
+   560→          <div className="space-y-2">
+   561→            <div className="flex items-center justify-between gap-2">
+   562→              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+   563→                ✨ AI Önerileri
+   564→              </p>
+   565→              <Button
+   566→                size="sm"
+   567→                variant="ghost"
+   568→                onClick={fetchAi}
+   569→                disabled={!canAi || loadingAi}
+   570→                className="h-7 px-2 text-xs btn-gradient text-white border-0 shine-on-hover relative overflow-hidden"
+   571→              >
+   572→                {loadingAi ? (
+   573→                  <Loader2 className="size-3 animate-spin" />
+   574→                ) : (
+   575→                  <Sparkles className="size-3" />
+   576→                )}
+   577→                {loadingAi ? "Üretiliyor..." : "AI ile geliştir"}
+   578→              </Button>
+   579→            </div>
+   580→            {!canAi && (
+   581→              <p className="text-[11px] text-muted-foreground">
+   582→                AI önerileri için en az 3 karakter konu yazın.
+   583→              </p>
+   584→            )}
+   585→            {loadingAi && (
+   586→              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+   587→                <Loader2 className="size-3 animate-spin" />
+   588→                AI fikirler üretiliyor (2-5 sn)...
+   589→              </div>
+   590→            )}
+   591→            {!loadingAi && aiFetched && ai.length === 0 && (
+   592→              <p className="text-[11px] text-muted-foreground">
+   593→                AI bu kez öneri üretemedi. Konuyu biraz daha detaylandırın.
+   594→              </p>
+   595→            )}
+   596→            {!loadingAi && ai.length > 0 && (
+   597→              <div className="flex flex-wrap gap-1.5">
+   598→                {ai.map((idea, i) => (
+   599→                  <motion.button
+   600→                    key={idea + i}
+   601→                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+   602→                    animate={{ opacity: 1, y: 0, scale: 1 }}
+   603→                    transition={{ delay: i * 0.06 }}
+   604→                    onClick={() => pickIdea(idea)}
+   605→                    className="accent-bg-soft accent-text-soft accent-border hover:brightness-110 rounded-full px-3 py-1 text-xs transition-all text-left max-w-full badge-pop"
+   606→                  >
+   607→                    {idea}
+   608→                  </motion.button>
+   609→                ))}
+   610→              </div>
+   611→            )}
+   612→          </div>
+   613→        </div>
+   614→      </CollapsibleContent>
+   615→    </Collapsible>
+   616→  );
+   617→}
+   618→
+   619→function ScriptMode() {
+   620→  const wizard = useApp((s) => s.wizard);
+   621→  const setWizard = useApp((s) => s.setWizard);
+   622→  const [open, setOpen] = React.useState(false);
+   623→  return (
+   624→    <Card className="glass card-glow overflow-hidden">
+   625→      <div className="h-0.5 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 animated-gradient-x bg-[length:200%_100%]" />
+   626→      <CardHeader>
+   627→        <CardTitle className="flex items-center gap-2">
+   628→          <span className="grid size-7 place-items-center rounded-lg bg-emerald-500/20 text-emerald-500">
+   629→            <FileText className="size-4" />
+   630→          </span>
+   631→          Senaryonuz
+   632→        </CardTitle>
+   633→        <CardDescription>
+   634→          Hazır metninizi girin. AI bunu sahnelere bölecek, her sahneye görsel
+   635→          ve seslendirmeyi üretecektir.
+   636→        </CardDescription>
+   637→      </CardHeader>
+   638→      <CardContent className="space-y-4">
+   639→        <div className="space-y-2">
+   640→          <Label htmlFor="customScript">Senaryo metni</Label>
+   641→          <Textarea
+   642→            id="customScript"
+   643→            value={wizard.customScript}
+   644→            onChange={(e) => setWizard({ customScript: e.target.value })}
+   645→            placeholder="Buraya senaryonuzu yapıştırın... Paragraflar sahne olarak değerlendirilir."
+   646→            className="min-h-48 font-mono text-sm"
+   647→          />
+   648→          <p className="text-xs text-muted-foreground">
+   649→            {wizard.customScript.trim().split(/\s+/).filter(Boolean).length}{" "}
+   650→            kelime ·{" "}
+   651→            {wizard.customScript.trim().split(/\n+/).filter(Boolean).length}{" "}
+   652→            paragraf
+   653→          </p>
+   654→        </div>
+   655→
+   656→        {/* Example script starters (curated, no AI call) */}
+   657→        <Collapsible open={open} onOpenChange={setOpen}>
+   658→          <CollapsibleTrigger asChild>
+   659→            <button
+   660→              type="button"
+   661→              className="group flex items-center justify-between gap-2 w-full rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10 px-3 py-2 text-sm transition-colors"
+   662→            >
+   663→              <span className="flex items-center gap-2">
+   664→                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-emerald-500">
+   665→                  <Lightbulb className="size-3.5" />
+   666→                </span>
+   667→                <span className="font-medium">Senaryo Önerileri</span>
+   668→              </span>
+   669→              <ChevronDown
+   670→                className={cn(
+   671→                  "size-4 text-muted-foreground transition-transform duration-200",
+   672→                  open && "rotate-180"
+   673→                )}
+   674→              />
+   675→            </button>
+   676→          </CollapsibleTrigger>
+   677→          <CollapsibleContent>
+   678→            <ul className="mt-3 space-y-1.5">
+   679→              {EXAMPLE_SCRIPTS.map((s, i) => (
+   680→                <motion.li
+   681→                  key={s.title + i}
+   682→                  initial={{ opacity: 0, x: -8 }}
+   683→                  animate={{ opacity: 1, x: 0 }}
+   684→                  transition={{ delay: i * 0.05 }}
+   685→                >
+   686→                  <button
+   687→                    type="button"
+   688→                    onClick={() => {
+   689→                      setWizard({ customScript: s.body });
+   690→                      setOpen(false);
+   691→                      toast.success("Senaryo örneği yüklendi");
+   692→                    }}
+   693→                    className="w-full text-left rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40 px-3 py-2 transition-colors"
+   694→                  >
+   695→                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+   696→                      {s.title}
+   697→                    </p>
+   698→                    <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+   699→                      {s.body}
+   700→                    </p>
+   701→                  </button>
+   702→                </motion.li>
+   703→              ))}
+   704→            </ul>
+   705→          </CollapsibleContent>
+   706→        </Collapsible>
+   707→
+   708→        <div className="space-y-2">
+   709→          <div className="flex items-center justify-between">
+   710→            <Label>Sahne sayısı (önerilen)</Label>
+   711→            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+   712→          </div>
+   713→          <Slider
+   714→            min={3}
+   715→            max={8}
+   716→            step={1}
+   717→            value={[wizard.targetScenes]}
+   718→            onValueChange={(v) => setWizard({ targetScenes: v[0] })}
+   719→          />
+   720→        </div>
+   721→      </CardContent>
+   722→    </Card>
+   723→  );
+   724→}
+   725→
+   726→const EXAMPLE_SCRIPTS: { title: string; body: string }[] = [
+   727→  {
+   728→    title: "Ürün Tanıtımı",
+   729→    body: `Bugün sizinle tanıştırmak istediğimiz bir yenilik var.
+   730→
+   731→Yeni nesil akıllı cihaz, günlük rutininizi tamamen değiştiriyor.
+   732→
+   733→Sadece üç adımda kurulum, saniyeler içinde kullanıma hazır.
+   734→
+   735→Şık tasarımı her ortama uyum sağlıyor.
+   736→
+   737→Hemen keşfedin, farkı siz de görün.`,
+   738→  },
+   739→  {
+   740→    title: "Eğitim / Açıklayıcı",
+   741→    body: `Bir konuyu kısaca açıklayacağız.
+   742→
+   743→Önce temel kavramı tanımlayalım.
+   744→
+   745→Ardından neden önemli olduğunu görelim.
+   746→
+   747→Son olarak pratik bir örnekle bağlayalım.
+   748→
+   749→Bir sonraki adımda neler yapabileceğinizi gösterelim.`,
+   750→  },
+   751→  {
+   752→    title: "Hikâye Anlatımı",
+   753→    body: `Bir zamanlar, küçük bir atölyede büyük bir fikir doğdu.
+   754→
+   755→Yıllar süren denemeler, sayısız başarısızlık.
+   756→
+   757→Ama her deneme bir adım daha yaklaştırdı.
+   758→
+   759→Sonunda, bugün elinizdeki ürün ortaya çıktı.
+   760→
+   761→Bu sadece bir başlangıç.`,
+   762→  },
+   763→  {
+   764→    title: "İlham / Motivasyon",
+   765→    body: `Hayatın en güzel anları, cesur kararlarla başlar.
+   766→
+   767→Bugün attığın küçük bir adım, yarının büyük başarısı olabilir.
+   768→
+   769→Durma. Harekete geç.
+   770→
+   771→Çünkü sen, başarmayı hak ediyorsun.`,
+   772→  },
+   773→  {
+   774→    title: "Duyuru / CTA",
+   775→    body: `Duyurumuz var!
+   776→
+   777→Yeni koleksiyon resmi olarak yayında.
+   778→
+   779→Sınırlı süreyle özel indirimden yararlanın.
+   780→
+   781→Hemen tıklayın, fırsatı kaçırmayın.
+   782→
+   783→Seni bekliyoruz.`,
+   784→  },
+   785→];
+   786→
+   787→function ProductMode() {
+   788→  const wizard = useApp((s) => s.wizard);
+   789→  const setWizard = useApp((s) => s.setWizard);
+   790→  const fileRef = React.useRef<HTMLInputElement>(null);
+   791→
+   792→  const [uploading, setUploading] = React.useState(false);
+   793→  const [analyzing, setAnalyzing] = React.useState(false);
+   794→  const [analysis, setAnalysis] = React.useState<AnalyzeProductResponse | null>(null);
+   795→
+   796→  const onPick = async (files: FileList | null) => {
+   797→    if (!files || !files.length) return;
+   798→    setUploading(true);
+   799→    try {
+   800→      const collected: string[] = [];
+   801→      for (const file of Array.from(files).slice(0, 8)) {
+   802→        const dataUrl = await fileToDataUrl(file);
+   803→        const { url } = await uploadImage(dataUrl, file.name);
+   804→        // For product analysis + render, we need both the persisted URL (for display)
+   805→        // and the data URL (for VLM). We persist to /assets/ via upload and keep dataUrl
+   806→        // for sending to render. Store BOTH: the dataUrl so it can be sent to render API.
+   807→        // The display layer uses the persisted url OR the dataUrl (both work in <img>).
+   808→        collected.push(dataUrl);
+   809→      }
+   810→      setWizard({ productImages: [...wizard.productImages, ...collected] });
+   811→      toast.success(`${collected.length} görsel yüklendi`);
+   812→    } catch (e: any) {
+   813→      toast.error("Yükleme hatası", { description: e?.message });
+   814→    } finally {
+   815→      setUploading(false);
+   816→      if (fileRef.current) fileRef.current.value = "";
+   817→    }
+   818→  };
+   819→
+   820→  const removeImage = (idx: number) => {
+   821→    setWizard({
+   822→      productImages: wizard.productImages.filter((_, i) => i !== idx),
+   823→    });
+   824→  };
+   825→
+   826→  const runAnalysis = async () => {
+   827→    const first = wizard.productImages[0];
+   828→    if (!first) return;
+   829→    setAnalyzing(true);
+   830→    setAnalysis(null);
+   831→    try {
+   832→      const res = await analyzeProduct({
+   833→        image: first,
+   834→        language: wizard.language,
+   835→      });
+   836→      setAnalysis(res);
+   837→      toast.success("Ürün analizi tamamlandı");
+   838→    } catch (e: any) {
+   839→      toast.error("Analiz hatası", { description: e?.message });
+   840→    } finally {
+   841→      setAnalyzing(false);
+   842→    }
+   843→  };
+   844→
+   845→  return (
+   846→    <div className="space-y-4">
+   847→      <Card>
+   848→        <CardHeader>
+   849→          <CardTitle className="flex items-center gap-2">
+   850→            <span className="grid size-7 place-items-center rounded-lg bg-amber-500/20 text-amber-500">
+   851→              <ImagePlus className="size-4" />
+   852→            </span>
+   853→            Ürün Görselleri
+   854→          </CardTitle>
+   855→          <CardDescription>
+   856→            Ürün fotoğraflarınızı yükleyin. AI (VLM) ile analiz edilecek ve
+   857→            tanıtım videosu oluşturulacak.
+   858→          </CardDescription>
+   859→        </CardHeader>
+   860→        <CardContent className="space-y-4">
+   861→          <div
+   862→            onDragOver={(e) => {
+   863→              e.preventDefault();
+   864→              e.dataTransfer.dropEffect = "copy";
+   865→            }}
+   866→            onDrop={(e) => {
+   867→              e.preventDefault();
+   868→              onPick(e.dataTransfer.files);
+   869→            }}
+   870→            onClick={() => fileRef.current?.click()}
+   871→            className="cursor-pointer rounded-2xl border-2 border-dashed border-border hover:border-fuchsia-500/50 hover:bg-fuchsia-500/5 transition-colors p-8 text-center"
+   872→          >
+   873→            <input
+   874→              ref={fileRef}
+   875→              type="file"
+   876→              accept="image/*"
+   877→              multiple
+   878→              className="hidden"
+   879→              onChange={(e) => onPick(e.target.files)}
+   880→            />
+   881→            <div className="mx-auto grid size-12 place-items-center rounded-full bg-muted text-muted-foreground mb-3">
+   882→              {uploading ? (
+   883→                <Loader2 className="size-5 animate-spin text-fuchsia-500" />
+   884→              ) : (
+   885→                <Upload className="size-5" />
+   886→              )}
+   887→            </div>
+   888→            <p className="text-sm font-medium">
+   889→              {uploading
+   890→                ? "Yükleniyor..."
+   891→                : "Sürükleyip bırakın veya tıklayın"}
+   892→            </p>
+   893→            <p className="text-xs text-muted-foreground mt-1">
+   894→              PNG, JPG, WEBP · en fazla 8 görsel
+   895→            </p>
+   896→          </div>
+   897→
+   898→          {wizard.productImages.length > 0 && (
+   899→            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+   900→              {wizard.productImages.map((img, i) => (
+   901→                <div
+   902→                  key={i}
+   903→                  className="relative aspect-square overflow-hidden rounded-lg border border-border group"
+   904→                >
+   905→                  <img
+   906→                    src={img}
+   907→                    alt={`Ürün ${i + 1}`}
+   908→                    className="size-full object-cover"
+   909→                  />
+   910→                  <button
+   911→                    onClick={() => removeImage(i)}
+   912→                    className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+   913→                    aria-label="Kaldır"
+   914→                  >
+   915→                    <Trash2 className="size-3" />
+   916→                  </button>
+   917→                </div>
+   918→              ))}
+   919→            </div>
+   920→          )}
+   921→
+   922→          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 flex gap-3">
+   923→            <Eye className="size-4 text-amber-500 shrink-0 mt-0.5" />
+   924→            <p className="text-xs text-muted-foreground">
+   925→              Ürün fotoğrafları AI ile analiz edilecek. "Analiz et" butonuyla
+   926→              örneği görün.
+   927→            </p>
+   928→          </div>
+   929→
+   930→          {/* Product info card + example chips */}
+   931→          <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-orange-500/5 p-4 space-y-3">
+   932→            <div className="flex items-start gap-2">
+   933→              <span className="grid size-7 place-items-center rounded-lg bg-amber-500/20 text-amber-500 shrink-0">
+   934→                <Lightbulb className="size-3.5" />
+   935→              </span>
+   936→              <div className="text-xs text-muted-foreground leading-relaxed">
+   937→                <span className="font-medium text-foreground">İpucu: </span>
+   938→                Net, iyi aydınlatılmış ürün fotoğrafları yükleyin. Beyaz arka plan
+   939→                en iyi sonucu verir.
+   940→              </div>
+   941→            </div>
+   942→            <div className="space-y-1.5">
+   943→              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+   944→                Örnek ürün tipleri
+   945→              </p>
+   946→              <div className="flex flex-wrap gap-1.5">
+   947→                {[
+   948→                  "Akıllı kahve makinesi",
+   949→                  "Kablosuz kulaklık",
+   950→                  "Doğal cilt bakım seti",
+   951→                ].map((label, i) => (
+   952→                  <motion.button
+   953→                    key={label}
+   954→                    initial={{ opacity: 0, y: 6, scale: 0.92 }}
+   955→                    animate={{ opacity: 1, y: 0, scale: 1 }}
+   956→                    transition={{ delay: i * 0.05 }}
+   957→                    onClick={() => {
+   958→                      setWizard({ topic: label });
+   959→                      toast.success("Örnek ürün tipi işaretlendi", {
+   960→                        description: label,
+   961→                      });
+   962→                    }}
+   963→                    className="bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20 border border-amber-500/20 rounded-full px-3 py-1 text-xs transition-colors"
+   964→                  >
+   965→                    {label}
+   966→                  </motion.button>
+   967→                ))}
+   968→              </div>
+   969→            </div>
+   970→          </div>
+   971→
+   972→          <Button
+   973→            onClick={runAnalysis}
+   974→            disabled={!wizard.productImages.length || analyzing}
+   975→            variant="outline"
+   976→            className="border-amber-500/40 hover:bg-amber-500/10"
+   977→          >
+   978→            {analyzing ? (
+   979→              <Loader2 className="size-4 animate-spin" />
+   980→            ) : (
+   981→              <Eye className="size-4" />
+   982→            )}
+   983→            {analyzing ? "Analiz ediliyor..." : "Analiz et"}
+   984→          </Button>
+   985→
+   986→          {analysis && (
+   987→            <Card className="bg-muted/40 border-amber-500/30">
+   988→              <CardHeader>
+   989→                <CardTitle className="text-base flex items-center gap-2">
+   990→                  <Badge className="bg-amber-500 border-0 text-white">VLM</Badge>
+   991→                  {analysis.name}
+   992→                  <span className="text-muted-foreground text-xs font-normal">
+   993→                    {analysis.category}
+   994→                  </span>
+   995→                </CardTitle>
+   996→              </CardHeader>
+   997→              <CardContent className="space-y-3 text-sm">
+   998→                <p className="text-muted-foreground">{analysis.description}</p>
+   999→                <div>
+  1000→                  <p className="text-xs font-semibold text-foreground mb-1">
+  1001→                    Öne çıkan özellikler
+  1002→                  </p>
+  1003→                  <div className="flex flex-wrap gap-1">
+  1004→                    {analysis.features.map((f, i) => (
+  1005→                      <Badge key={i} variant="secondary">
+  1006→                        {f}
+  1007→                      </Badge>
+  1008→                    ))}
+  1009→                  </div>
+  1010→                </div>
+  1011→                <div>
+  1012→                  <p className="text-xs font-semibold text-foreground mb-1">
+  1013→                    Satış noktaları
+  1014→                  </p>
+  1015→                  <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+  1016→                    {analysis.sellingPoints.map((s, i) => (
+  1017→                      <li key={i}>{s}</li>
+  1018→                    ))}
+  1019→                  </ul>
+  1020→                </div>
+  1021→              </CardContent>
+  1022→            </Card>
+  1023→          )}
+  1024→        </CardContent>
+  1025→      </Card>
+  1026→    </div>
+  1027→  );
+  1028→}
+  1029→
+  1030→// ---------- Step 2: Configuration ----------
+  1031→function StepConfig() {
+  1032→  const wizard = useApp((s) => s.wizard);
+  1033→  const setWizard = useApp((s) => s.setWizard);
+  1034→
+  1035→  const voices = getVoicesForProvider(wizard.ttsProvider);
+  1036→
+  1037→  return (
+  1038→    <div className="space-y-4">
+  1039→      <ConfigSection
+  1040→        title="Dil ve Stil"
+  1041→        desc="Videonuzun dilini, tonunu ve görsel stilini seçin."
+  1042→        icon={Palette}
+  1043→        accent="from-violet-500 to-fuchsia-500"
+  1044→      >
+  1045→        {/* Language */}
+  1046→        <div className="space-y-2">
+  1047→          <Label className="flex items-center gap-1.5">
+  1048→            <Globe className="size-3.5 text-muted-foreground" />
+  1049→            Dil
+  1050→          </Label>
+  1051→          <Select
+  1052→            value={wizard.language}
+  1053→            onValueChange={(v) => setWizard({ language: v })}
+  1054→          >
+  1055→            <SelectTrigger className="w-full">
+  1056→              <SelectValue placeholder="Dil seçin" />
+  1057→            </SelectTrigger>
+  1058→            <SelectContent className="max-h-72">
+  1059→              {LANGUAGES.map((l) => (
+  1060→                <SelectItem key={l.code} value={l.code}>
+  1061→                  <span className="mr-2">{l.flag}</span>
+  1062→                  {l.nativeName} ({l.name})
+  1063→                </SelectItem>
+  1064→              ))}
+  1065→            </SelectContent>
+  1066→          </Select>
+  1067→        </div>
+  1068→
+  1069→        {/* Tone */}
+  1070→        <div className="space-y-2">
+  1071→          <Label className="flex items-center gap-1.5">
+  1072→            <AudioLines className="size-3.5 text-muted-foreground" />
+  1073→            Ton
+  1074→          </Label>
+  1075→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1076→            {TONES.map((t) => {
+  1077→              const active = wizard.tone === t.id;
+  1078→              return (
+  1079→                <button
+  1080→                  key={t.id}
+  1081→                  onClick={() => setWizard({ tone: t.id as Tone })}
+  1082→                  className={cn(
+  1083→                    "rounded-xl border p-3 text-left transition-all",
+  1084→                    active
+  1085→                      ? "border-fuchsia-500 bg-fuchsia-500/10"
+  1086→                      : "hover:border-muted-foreground"
+  1087→                  )}
+  1088→                >
+  1089→                  <div className="text-xl mb-1">{t.emoji}</div>
+  1090→                  <p className="text-sm font-medium">{t.label}</p>
+  1091→                  <p className="text-[10px] text-muted-foreground leading-tight">
+  1092→                    {t.description}
+  1093→                  </p>
+  1094→                </button>
+  1095→              );
+  1096→            })}
+  1097→          </div>
+  1098→        </div>
+  1099→
+  1100→        {/* Style */}
+  1101→        <div className="space-y-2">
+  1102→          <Label>Video stili</Label>
+  1103→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1104→            {STYLES.map((s) => {
+  1105→              const active = wizard.style === s.id;
+  1106→              return (
+  1107→                <button
+  1108→                  key={s.id}
+  1109→                  onClick={() => setWizard({ style: s.id as VideoStyle })}
+  1110→                  className={cn(
+  1111→                    "overflow-hidden rounded-xl border transition-all text-left",
+  1112→                    active
+  1113→                      ? "border-fuchsia-500 ring-2 ring-fuchsia-500/30"
+  1114→                      : "hover:border-muted-foreground"
+  1115→                  )}
+  1116→                >
+  1117→                  <div
+  1118→                    className={cn(
+  1119→                      "h-10 w-full bg-gradient-to-r",
+  1120→                      s.gradient
+  1121→                    )}
+  1122→                  />
+  1123→                  <div className="p-2">
+  1124→                    <p className="text-sm font-medium">{s.label}</p>
+  1125→                    <p className="text-[10px] text-muted-foreground leading-tight">
+  1126→                      {s.description}
+  1127→                    </p>
+  1128→                  </div>
+  1129→                </button>
+  1130→              );
+  1131→            })}
+  1132→          </div>
+  1133→        </div>
+  1134→
+  1135→        {/* Aspect ratio */}
+  1136→        <div className="space-y-2">
+  1137→          <Label className="flex items-center gap-1.5">
+  1138→            <RectangleHorizontal className="size-3.5 text-muted-foreground" />
+  1139→            En-boy oranı
+  1140→          </Label>
+  1141→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+  1142→            {ASPECTS.map((a) => {
+  1143→              const active = wizard.aspectRatio === a.id;
+  1144→              return (
+  1145→                <button
+  1146→                  key={a.id}
+  1147→                  onClick={() => setWizard({ aspectRatio: a.id })}
+  1148→                  className={cn(
+  1149→                    "rounded-xl border p-3 text-left transition-all",
+  1150→                    active
+  1151→                      ? "border-fuchsia-500 bg-fuchsia-500/10"
+  1152→                      : "hover:border-muted-foreground"
+  1153→                  )}
+  1154→                >
+  1155→                  <p className="text-sm font-semibold">{a.label}</p>
+  1156→                  <p className="text-[10px] text-muted-foreground">{a.hint}</p>
+  1157→                </button>
+  1158→              );
+  1159→            })}
+  1160→          </div>
+  1161→        </div>
+  1162→      </ConfigSection>
+  1163→
+  1164→      <ConfigSection
+  1165→        title="Sağlayıcılar"
+  1166→        desc="Hangi LLM ile senaryo, hangi TTS ile seslendirme yapılacağını seçin."
+  1167→        icon={Cpu}
+  1168→        accent="from-fuchsia-500 to-pink-500"
+  1169→      >
+  1170→        {/* LLM */}
+  1171→        <div className="space-y-2">
+  1172→          <Label className="flex items-center gap-1.5">
+  1173→            <Cpu className="size-3.5 text-muted-foreground" />
+  1174→            LLM Sağlayıcısı
+  1175→          </Label>
+  1176→          <Select
+  1177→            value={wizard.llmProvider}
+  1178→            onValueChange={(v) => setWizard({ llmProvider: v })}
+  1179→          >
+  1180→            <SelectTrigger className="w-full">
+  1181→              <SelectValue />
+  1182→            </SelectTrigger>
+  1183→            <SelectContent>
+  1184→              {LLM_PROVIDERS.map((p) => (
+  1185→                <SelectItem key={p.id} value={p.id}>
+  1186→                  <span className="flex flex-col">
+  1187→                    <span>{p.name}</span>
+  1188→                    <span className="text-[10px] text-muted-foreground">
+  1189→                      {p.models.join(", ")}
+  1190→                    </span>
+  1191→                  </span>
+  1192→                </SelectItem>
+  1193→              ))}
+  1194→            </SelectContent>
+  1195→          </Select>
+  1196→          <ProviderBadges requiresKey={LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider)?.requiresKey} />
+  1197→        </div>
+  1198→
+  1199→        {/* TTS */}
+  1200→        <div className="space-y-2">
+  1201→          <Label className="flex items-center gap-1.5">
+  1202→            <Mic className="size-3.5 text-muted-foreground" />
+  1203→            TTS Sağlayıcısı
+  1204→          </Label>
+  1205→          <Select
+  1206→            value={wizard.ttsProvider}
+  1207→            onValueChange={(v) => {
+  1208→              const voices = getVoicesForProvider(v);
+  1209→              const rec = recommendVoice(v, wizard.tone, wizard.language);
+  1210→              setWizard({
+  1211→                ttsProvider: v,
+  1212→                voice: voices.find((vv) => vv.id === rec)?.id ?? voices[0]?.id ?? "",
+  1213→              });
+  1214→            }}
+  1215→          >
+  1216→            <SelectTrigger className="w-full">
+  1217→              <SelectValue />
+  1218→            </SelectTrigger>
+  1219→            <SelectContent>
+  1220→              {TTS_PROVIDERS.map((p) => (
+  1221→                <SelectItem key={p.id} value={p.id}>
+  1222→                  <span className="flex flex-col">
+  1223→                    <span>{p.name}</span>
+  1224→                    <span className="text-[10px] text-muted-foreground">
+  1225→                      {p.voices.length} ses
+  1226→                    </span>
+  1227→                  </span>
+  1228→                </SelectItem>
+  1229→              ))}
+  1230→            </SelectContent>
+  1231→          </Select>
+  1232→          <ProviderBadges requiresKey={TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider)?.requiresKey} />
+  1233→        </div>
+  1234→
+  1235→        {/* Voice */}
+  1236→        <div className="space-y-2">
+  1237→          <div className="flex items-center justify-between">
+  1238→            <Label className="flex items-center gap-1.5">
+  1239→              <Mic className="size-3.5 text-muted-foreground" />
+  1240→              Ses
+  1241→            </Label>
+  1242→            <Button
+  1243→              variant="ghost"
+  1244→              size="sm"
+  1245→              onClick={() =>
+  1246→                setWizard({
+  1247→                  voice: recommendVoice(
+  1248→                    wizard.ttsProvider,
+  1249→                    wizard.tone,
+  1250→                    wizard.language
+  1251→                  ),
+  1252→                })
+  1253→              }
+  1254→            >
+  1255→              <Sparkles className="size-3.5" />
+  1256→              Otomatik öner
+  1257→            </Button>
+  1258→          </div>
+  1259→          <Select
+  1260→            value={wizard.voice}
+  1261→            onValueChange={(v) => setWizard({ voice: v })}
+  1262→          >
+  1263→            <SelectTrigger className="w-full">
+  1264→              <SelectValue />
+  1265→            </SelectTrigger>
+  1266→            <SelectContent className="max-h-72">
+  1267→              {voices.map((v) => (
+  1268→                <SelectItem key={v.id} value={v.id}>
+  1269→                  <span className="flex flex-col">
+  1270→                    <span>
+  1271→                      {v.name}{" "}
+  1272→                      <span className="text-[10px] text-muted-foreground">
+  1273→                        ({v.gender})
+  1274→                      </span>
+  1275→                    </span>
+  1276→                    <span className="text-[10px] text-muted-foreground">
+  1277→                      {v.description}
+  1278→                    </span>
+  1279→                  </span>
+  1280→                </SelectItem>
+  1281→              ))}
+  1282→            </SelectContent>
+  1283→          </Select>
+  1284→        </div>
+  1285→      </ConfigSection>
+  1286→    </div>
+  1287→  );
+  1288→}
+  1289→
+  1290→function ConfigSection({
+  1291→  title,
+  1292→  desc,
+  1293→  icon: Icon,
+  1294→  accent,
+  1295→  children,
+  1296→}: {
+  1297→  title: string;
+  1298→  desc: string;
+  1299→  icon: React.ComponentType<{ className?: string }>;
+  1300→  accent: string;
+  1301→  children: React.ReactNode;
+  1302→}) {
+  1303→  return (
+  1304→    <Card className="glass card-glow shine-on-hover card-hover-lift overflow-hidden">
+  1305→      <div className={cn("h-1 w-full bg-gradient-to-r", accent)} />
+  1306→      <CardHeader>
+  1307→        <CardTitle className="flex items-center gap-2 text-base">
+  1308→          <span className={cn("grid size-7 place-items-center rounded-lg bg-gradient-to-br text-white shadow-md", accent)}>
+  1309→            <Icon className="size-4" />
+  1310→          </span>
+  1311→          {title}
+  1312→        </CardTitle>
+  1313→        <CardDescription>{desc}</CardDescription>
+  1314→      </CardHeader>
+  1315→      <CardContent className="space-y-6">{children}</CardContent>
+  1316→    </Card>
+  1317→  );
+  1318→}
+  1319→
+  1320→function ProviderBadges({ requiresKey }: { requiresKey?: boolean }) {
+  1321→  return (
+  1322→    <div className="flex flex-wrap gap-1">
+  1323→      {requiresKey ? (
+  1324→        <Badge variant="outline" className="text-amber-500 border-amber-500/40">
+  1325→          API anahtarı gerekir (Ayarlar'dan)
+  1326→        </Badge>
+  1327→      ) : (
+  1328→        <Badge variant="outline" className="text-emerald-500 border-emerald-500/40">
+  1329→          Yerleşik — anahtar gerekmez
+  1330→        </Badge>
+  1331→      )}
+  1332→    </div>
+  1333→  );
+  1334→}
+  1335→
+  1336→// ---------- Step 3: Summary & Generate ----------
+  1337→function StepSummary() {
+  1338→  const wizard = useApp((s) => s.wizard);
+  1339→  const resetWizard = useApp((s) => s.resetWizard);
+  1340→  const go = useApp((s) => s.go);
+  1341→  const [submitting, setSubmitting] = React.useState(false);
+  1342→
+  1343→  const generate = async () => {
+  1344→    setSubmitting(true);
+  1345→    try {
+  1346→      const project = await createProject({
+  1347→        title:
+  1348→          wizard.title ||
+  1349→          (wizard.mode === "script"
+  1350→            ? wizard.customScript.slice(0, 60)
+  1351→            : wizard.topic.slice(0, 60)) ||
+  1352→          "Yeni Video",
+  1353→        topic:
+  1354→          wizard.mode === "script" ? wizard.customScript.slice(0, 200) : wizard.topic,
+  1355→        mode: wizard.mode,
+  1356→        language: wizard.language,
+  1357→        llmProvider: wizard.llmProvider,
+  1358→        ttsProvider: wizard.ttsProvider,
+  1359→        voice: wizard.voice,
+  1360→        tone: wizard.tone,
+  1361→        style: wizard.style,
+  1362→        aspectRatio: wizard.aspectRatio,
+  1363→        productImages: wizard.mode === "product" ? wizard.productImages : undefined,
+  1364→        customScript: wizard.mode === "script" ? wizard.customScript : undefined,
+  1365→        targetScenes: wizard.targetScenes,
+  1366→      });
+  1367→
+  1368→      await renderProject(project.id, {
+  1369→        productImages:
+  1370→          wizard.mode === "product" ? wizard.productImages : undefined,
+  1371→        customScript: wizard.mode === "script" ? wizard.customScript : undefined,
+  1372→        targetScenes: wizard.targetScenes,
+  1373→      });
+  1374→
+  1375→      toast.success("Üretim başladı", {
+  1376→        description: "Senaryo, görseller, seslendirme ve altyazılar hazırlanıyor.",
+  1377→      });
+  1378→
+  1379→      resetWizard();
+  1380→      go("detail", project.id);
+  1381→    } catch (e: any) {
+  1382→      toast.error("Üretim başlatılamadı", { description: e?.message });
+  1383→    } finally {
+  1384→      setSubmitting(false);
+  1385→    }
+  1386→  };
+  1387→
+  1388→  const mode = MODE_MAP[wizard.mode];
+  1389→
+  1390→  const summary: { label: string; value: string }[] = [
+  1391→    { label: "Mod", value: `${mode?.emoji} ${mode?.label}` },
+  1392→    {
+  1393→      label: "Konu",
+  1394→      value:
+  1395→        wizard.mode === "script"
+  1396→          ? `${wizard.customScript.slice(0, 80)}...`
+  1397→          : wizard.topic || "—",
+  1398→    },
+  1399→    {
+  1400→      label: "Sahne sayısı",
+  1401→      value: String(wizard.targetScenes),
+  1402→    },
+  1403→    {
+  1404→      label: "Dil",
+  1405→      value: LANGUAGES.find((l) => l.code === wizard.language)?.nativeName || wizard.language,
+  1406→    },
+  1407→    {
+  1408→      label: "Ton",
+  1409→      value: `${TONES.find((t) => t.id === wizard.tone)?.emoji} ${
+  1410→        TONES.find((t) => t.id === wizard.tone)?.label
+  1411→      }`,
+  1412→    },
+  1413→    {
+  1414→      label: "Stil",
+  1415→      value: STYLES.find((s) => s.id === wizard.style)?.label || wizard.style,
+  1416→    },
+  1417→    {
+  1418→      label: "En-boy",
+  1419→      value: wizard.aspectRatio,
+  1420→    },
+  1421→    {
+  1422→      label: "LLM",
+  1423→      value:
+  1424→        LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider)?.name ||
+  1425→        wizard.llmProvider,
+  1426→    },
+  1427→    {
+  1428→      label: "TTS",
+  1429→      value:
+  1430→        TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider)?.name ||
+  1431→        wizard.ttsProvider,
+  1432→    },
+  1433→    {
+  1434→      label: "Ses",
+  1435→      value:
+  1436→        getVoicesForProvider(wizard.ttsProvider).find((v) => v.id === wizard.voice)
+  1437→          ?.name || wizard.voice,
+  1438→    },
+  1439→  ];
+  1440→
+  1441→  if (wizard.mode === "product") {
+  1442→    summary.splice(2, 0, {
+  1443→      label: "Ürün görselleri",
+  1444→      value: `${wizard.productImages.length} görsel`,
+  1445→    });
+  1446→  }
+  1447→
+  1448→  return (
+  1449→    <div className="space-y-4">
+  1450→      {/* Receipt-styled summary card */}
+  1451→      <Card className="glass shine-on-hover card-hover-lift overflow-hidden relative">
+  1452→        {/* gradient header */}
+  1453→        <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:200%_100%]" />
+  1454→        <CardHeader className="pb-3">
+  1455→          <CardTitle className="flex items-center gap-2">
+  1456→            <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
+  1457→              <Receipt className="size-4" />
+  1458→            </span>
+  1459→            Özet
+  1460→          </CardTitle>
+  1461→          <CardDescription>
+  1462→            Tüm seçimleri kontrol edin ve üretimi başlatın.
+  1463→          </CardDescription>
+  1464→        </CardHeader>
+  1465→        <CardContent>
+  1466→          {/* receipt body with perforated edges */}
+  1467→          <div className="relative rounded-xl bg-muted/30 border border-dashed border-border p-1">
+  1468→            <dl className="divide-y divide-border">
+  1469→              {summary.map((row) => (
+  1470→                <div
+  1471→                  key={row.label}
+  1472→                  className="flex items-start justify-between gap-4 py-2.5 px-3"
+  1473→                >
+  1474→                  <dt className="text-sm text-muted-foreground">{row.label}</dt>
+  1475→                  <dd className="text-sm font-medium text-right">{row.value}</dd>
+  1476→                </div>
+  1477→              ))}
+  1478→            </dl>
+  1479→          </div>
+  1480→        </CardContent>
+  1481→      </Card>
+  1482→
+  1483→      <Card className="bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-pink-500/10 border-fuchsia-500/30 glass-strong">
+  1484→        <CardContent className="py-6 flex flex-col sm:flex-row items-center gap-4 justify-between">
+  1485→          <div className="text-center sm:text-left">
+  1486→            <p className="text-base font-semibold">Videoyu üretmeye hazır mısın?</p>
+  1487→            <p className="text-xs text-muted-foreground">
+  1488→              Üretim arka planda çalışır — senaryo, görseller, seslendirme ve
+  1489→              altyazılar otomatik oluşturulur.
+  1490→            </p>
+  1491→          </div>
+  1492→          <Button
+  1493→            onClick={generate}
+  1494→            disabled={submitting}
+  1495→            className="accent-gradient accent-glow text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[44px] min-w-[160px] shine-on-hover"
+  1496→          >
+  1497→            {submitting ? (
+  1498→              <>
+  1499→                <Loader2 className="size-4 animate-spin" />
+  1500→                Başlatılıyor...
+  1501→              </>
+  1502→            ) : (
+  1503→              <>
+  1504→                <Wand2 className="size-4" />
+  1505→                Videoyu Üret
+  1506→              </>
+  1507→            )}
+  1508→          </Button>
+  1509→        </CardContent>
+  1510→      </Card>
+  1511→    </div>
+  1512→  );
+  1513→}
+  1514→

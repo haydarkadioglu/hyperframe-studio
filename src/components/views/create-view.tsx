@@ -27,6 +27,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import {
   MODES,
   MODE_MAP,
@@ -81,13 +82,18 @@ import {
   suggestPrompts,
 } from "@/lib/api-client";
 
-const STEPS = ["Mod", "İçerik", "Yapılandırma", "Özet & Üret"];
+const STEP_KEYS = [
+  "create.step.mode",
+  "create.step.content",
+  "create.step.config",
+  "create.step.summary",
+];
 
-const ASPECTS: { id: AspectRatio; label: string; hint: string }[] = [
-  { id: "16:9", label: "16:9", hint: "Yatay (YouTube)" },
-  { id: "9:16", label: "9:16", hint: "Dikey (Shorts/Reels)" },
-  { id: "1:1", label: "1:1", hint: "Kare (Instagram)" },
-  { id: "4:5", label: "4:5", hint: "Dikey poster" },
+const ASPECTS: { id: AspectRatio; label: string; hintKey: string }[] = [
+  { id: "16:9", label: "16:9", hintKey: "create.config.aspect" },
+  { id: "9:16", label: "9:16", hintKey: "create.config.aspect" },
+  { id: "1:1", label: "1:1", hintKey: "create.config.aspect" },
+  { id: "4:5", label: "4:5", hintKey: "create.config.aspect" },
 ];
 
 export function CreateView() {
@@ -95,6 +101,7 @@ export function CreateView() {
   const setWizard = useApp((s) => s.setWizard);
   const resetWizard = useApp((s) => s.resetWizard);
   const go = useApp((s) => s.go);
+  const { t } = useLocale();
 
   const step = wizard.step;
 
@@ -111,18 +118,20 @@ export function CreateView() {
     return true;
   }, [step, wizard]);
 
+  const steps = STEP_KEYS.map((k) => t(k));
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
-            Yeni Video
+            {t("create.badge")}
           </p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
-            Video Oluştur
+            {t("create.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            4 adımda videonuzu üretin.
+            {t("create.subtitle")}
           </p>
         </div>
         <Button
@@ -133,14 +142,14 @@ export function CreateView() {
             go("home");
           }}
         >
-          Sıfırla
+          {t("common.reset")}
         </Button>
       </header>
 
       {/* Step indicator - connected progress bar */}
       <div className="relative">
         <ol className="flex items-center gap-2">
-          {STEPS.map((label, i) => {
+          {steps.map((label, i) => {
             const active = i === step;
             const done = i < step;
             return (
@@ -176,7 +185,7 @@ export function CreateView() {
                   </span>
                   <span className="hidden sm:inline">{label}</span>
                 </button>
-                {i < STEPS.length - 1 && (
+                {i < steps.length - 1 && (
                   <span
                     className={cn(
                       "h-px flex-1 transition-colors",
@@ -218,7 +227,7 @@ export function CreateView() {
           className="min-h-[44px]"
         >
           <ArrowLeft className="size-4" />
-          {step === 0 ? "İptal" : "Geri"}
+          {step === 0 ? t("common.cancel") : t("common.back")}
         </Button>
         {step < 3 && (
           <Button
@@ -226,7 +235,7 @@ export function CreateView() {
             disabled={!canNext}
             className="bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 min-h-[44px]"
           >
-            İleri
+            {t("common.next")}
             <ArrowRight className="size-4" />
           </Button>
         )}
@@ -239,11 +248,11 @@ export function CreateView() {
 function StepMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Videonuzun tipini seçin. Bu, hangi içeriği girmeniz gerektiğini
-        belirler.
+        {t("create.mode.prompt")}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {MODES.map((m) => {
@@ -279,12 +288,12 @@ function StepMode() {
                     {active && (
                       <Badge className="bg-fuchsia-500 border-0 text-white">
                         <Check className="size-3" />
-                        Seçili
+                        {t("create.mode.selected")}
                       </Badge>
                     )}
                   </div>
-                  <CardTitle className="mt-3">{m.label}</CardTitle>
-                  <CardDescription>{m.description}</CardDescription>
+                  <CardTitle className="mt-3">{t(`mode.${m.id}.label`)}</CardTitle>
+                  <CardDescription>{t(`mode.${m.id}.desc`)}</CardDescription>
                 </CardHeader>
               </Card>
             </button>
@@ -310,6 +319,7 @@ function StepContent() {
 function TopicMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   return (
     <Card className="glass card-glow overflow-hidden">
       <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x bg-[length:200%_100%]" />
@@ -318,21 +328,20 @@ function TopicMode() {
           <span className="grid size-7 place-items-center rounded-lg bg-violet-500/20 text-violet-500">
             <Sparkles className="size-4" />
           </span>
-          Konu / Başlık
+          {t("create.content.topic.label")}
         </CardTitle>
         <CardDescription>
-          Videonuz ne hakkında olsun? Bir cümle, anahtar kelimeler veya uzun bir
-          açıklama yazabilirsiniz.
+          {t("create.content.topic.question")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="topic">Konu</Label>
+          <Label htmlFor="topic">{t("create.content.topic")}</Label>
           <Textarea
             id="topic"
             value={wizard.topic}
             onChange={(e) => setWizard({ topic: e.target.value })}
-            placeholder="Örn: Yapay zekânın eğitim üzerindeki etkileri"
+            placeholder={t("create.content.topic.placeholder")}
             className="min-h-24"
           />
         </div>
@@ -342,13 +351,13 @@ function TopicMode() {
           language={wizard.language}
           onPick={(idea) => {
             setWizard({ topic: idea });
-            toast.success("Konu seçildi");
+            toast.success(t("common.copied"));
           }}
         />
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Sahne sayısı</Label>
-            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+            <Label>{t("create.content.scenes")}</Label>
+            <Badge variant="secondary">{t("create.content.scenes.count", { count: wizard.targetScenes })}</Badge>
           </div>
           <Slider
             min={3}
@@ -358,7 +367,7 @@ function TopicMode() {
             onValueChange={(v) => setWizard({ targetScenes: v[0] })}
           />
           <p className="text-xs text-muted-foreground">
-            3-8 sahne arası önerilir. Her sahne ~4-8 saniye sürer.
+            {t("create.content.scenes.hint")}
           </p>
         </div>
       </CardContent>
@@ -369,6 +378,7 @@ function TopicMode() {
 function YoutubeMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   return (
     <Card className="glass card-glow overflow-hidden">
       <div className="h-0.5 w-full bg-gradient-to-r from-rose-500 via-fuchsia-500 to-violet-500 animated-gradient-x bg-[length:200%_100%]" />
@@ -377,21 +387,20 @@ function YoutubeMode() {
           <span className="grid size-7 place-items-center rounded-lg bg-rose-500/20 text-rose-500">
             <Clapperboard className="size-4" />
           </span>
-          YouTube İçeriği
+          {t("mode.youtube.label")}
         </CardTitle>
         <CardDescription>
-          Konuyu girin, AI videoyu YouTube için optimize etsin. SRT/VTT
-          altyazıları üretim sonrası indirebilirsiniz.
+          {t("create.content.youtube.note")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="yt-topic">Video konusu</Label>
+          <Label htmlFor="yt-topic">{t("create.content.topic")}</Label>
           <Textarea
             id="yt-topic"
             value={wizard.topic}
             onChange={(e) => setWizard({ topic: e.target.value })}
-            placeholder="Örn: 5 verimlilik ipucu (Shorts için ideal)"
+            placeholder={t("create.content.topic.placeholder")}
             className="min-h-24"
           />
         </div>
@@ -401,24 +410,22 @@ function YoutubeMode() {
           language={wizard.language}
           onPick={(idea) => {
             setWizard({ topic: idea });
-            toast.success("Konu seçildi");
+            toast.success(t("common.copied"));
           }}
         />
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 flex gap-3">
           <Info className="size-5 text-rose-500 shrink-0" />
           <div className="text-sm space-y-1">
-            <p className="font-medium text-foreground">YouTube Altyazı Notu</p>
+            <p className="font-medium text-foreground">{t("mode.youtube.label")}</p>
             <p className="text-muted-foreground">
-              Üretim tamamlandığında, <strong>SRT</strong> ve <strong>VTT</strong>{" "}
-              dosyalarını video detay sayfasından indirebilirsiniz. Sahne
-              sürelerine göre zamanlanmıştır.
+              {t("create.content.youtube.note")}
             </p>
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Sahne sayısı</Label>
-            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+            <Label>{t("create.content.scenes")}</Label>
+            <Badge variant="secondary">{t("create.content.scenes.count", { count: wizard.targetScenes })}</Badge>
           </div>
           <Slider
             min={3}
@@ -500,6 +507,7 @@ function PromptSuggestions({
     setOpen(false);
   };
 
+  const { t } = useLocale();
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
@@ -514,7 +522,7 @@ function PromptSuggestions({
             <span className="grid size-6 place-items-center rounded-md bg-violet-500/20 text-violet-500">
               <Lightbulb className="size-3.5" />
             </span>
-            <span className="font-medium">💡 Konu Önerileri</span>
+            <span className="font-medium">{t("create.content.suggestions")}</span>
           </span>
           <ChevronDown
             className={cn(
@@ -529,12 +537,12 @@ function PromptSuggestions({
           {/* Curated ideas */}
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-              Hazır Konular
+              {t("create.content.suggestions.curated")}
             </p>
             {loadingCurated ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" />
-                Yükleniyor...
+                {t("common.loading")}
               </div>
             ) : curated.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -552,7 +560,7 @@ function PromptSuggestions({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">Şu an için öneri yok.</p>
+              <p className="text-xs text-muted-foreground">—</p>
             )}
           </div>
 
@@ -560,7 +568,7 @@ function PromptSuggestions({
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                ✨ AI Önerileri
+                {t("create.content.suggestions.ai")}
               </p>
               <Button
                 size="sm"
@@ -574,24 +582,22 @@ function PromptSuggestions({
                 ) : (
                   <Sparkles className="size-3" />
                 )}
-                {loadingAi ? "Üretiliyor..." : "AI ile geliştir"}
+                {loadingAi ? t("common.loading") : t("create.content.suggestions.aiButton")}
               </Button>
             </div>
             {!canAi && (
               <p className="text-[11px] text-muted-foreground">
-                AI önerileri için en az 3 karakter konu yazın.
+                {t("create.content.suggestions.aiHint")}
               </p>
             )}
             {loadingAi && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="size-3 animate-spin" />
-                AI fikirler üretiliyor (2-5 sn)...
+                {t("common.loading")}
               </div>
             )}
             {!loadingAi && aiFetched && ai.length === 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                AI bu kez öneri üretemedi. Konuyu biraz daha detaylandırın.
-              </p>
+              <p className="text-[11px] text-muted-foreground">—</p>
             )}
             {!loadingAi && ai.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -619,6 +625,7 @@ function PromptSuggestions({
 function ScriptMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   const [open, setOpen] = React.useState(false);
   return (
     <Card className="glass card-glow overflow-hidden">
@@ -628,28 +635,25 @@ function ScriptMode() {
           <span className="grid size-7 place-items-center rounded-lg bg-emerald-500/20 text-emerald-500">
             <FileText className="size-4" />
           </span>
-          Senaryonuz
+          {t("create.content.script.label")}
         </CardTitle>
         <CardDescription>
-          Hazır metninizi girin. AI bunu sahnelere bölecek, her sahneye görsel
-          ve seslendirmeyi üretecektir.
+          {t("create.content.script.hint")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="customScript">Senaryo metni</Label>
+          <Label htmlFor="customScript">{t("create.content.script.label")}</Label>
           <Textarea
             id="customScript"
             value={wizard.customScript}
             onChange={(e) => setWizard({ customScript: e.target.value })}
-            placeholder="Buraya senaryonuzu yapıştırın... Paragraflar sahne olarak değerlendirilir."
+            placeholder={t("create.content.script.placeholder")}
             className="min-h-48 font-mono text-sm"
           />
           <p className="text-xs text-muted-foreground">
             {wizard.customScript.trim().split(/\s+/).filter(Boolean).length}{" "}
-            kelime ·{" "}
-            {wizard.customScript.trim().split(/\n+/).filter(Boolean).length}{" "}
-            paragraf
+            · {wizard.customScript.trim().split(/\n+/).filter(Boolean).length}
           </p>
         </div>
 
@@ -664,7 +668,7 @@ function ScriptMode() {
                 <span className="grid size-6 place-items-center rounded-md bg-emerald-500/20 text-emerald-500">
                   <Lightbulb className="size-3.5" />
                 </span>
-                <span className="font-medium">Senaryo Önerileri</span>
+                <span className="font-medium">{t("create.content.script.examples")}</span>
               </span>
               <ChevronDown
                 className={cn(
@@ -688,7 +692,7 @@ function ScriptMode() {
                     onClick={() => {
                       setWizard({ customScript: s.body });
                       setOpen(false);
-                      toast.success("Senaryo örneği yüklendi");
+                      toast.success(t("common.copied"));
                     }}
                     className="w-full text-left rounded-lg border border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40 px-3 py-2 transition-colors"
                   >
@@ -707,8 +711,8 @@ function ScriptMode() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Sahne sayısı (önerilen)</Label>
-            <Badge variant="secondary">{wizard.targetScenes} sahne</Badge>
+            <Label>{t("create.content.scenes")}</Label>
+            <Badge variant="secondary">{t("create.content.scenes.count", { count: wizard.targetScenes })}</Badge>
           </div>
           <Slider
             min={3}
@@ -787,6 +791,7 @@ Seni bekliyoruz.`,
 function ProductMode() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const [uploading, setUploading] = React.useState(false);
@@ -808,9 +813,9 @@ function ProductMode() {
         collected.push(dataUrl);
       }
       setWizard({ productImages: [...wizard.productImages, ...collected] });
-      toast.success(`${collected.length} görsel yüklendi`);
+      toast.success(t("create.content.scenes.count", { count: collected.length }));
     } catch (e: any) {
-      toast.error("Yükleme hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -834,9 +839,9 @@ function ProductMode() {
         language: wizard.language,
       });
       setAnalysis(res);
-      toast.success("Ürün analizi tamamlandı");
+      toast.success(t("common.ready"));
     } catch (e: any) {
-      toast.error("Analiz hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setAnalyzing(false);
     }
@@ -850,11 +855,10 @@ function ProductMode() {
             <span className="grid size-7 place-items-center rounded-lg bg-amber-500/20 text-amber-500">
               <ImagePlus className="size-4" />
             </span>
-            Ürün Görselleri
+            {t("create.content.product.label")}
           </CardTitle>
           <CardDescription>
-            Ürün fotoğraflarınızı yükleyin. AI (VLM) ile analiz edilecek ve
-            tanıtım videosu oluşturulacak.
+            {t("create.content.product.hint")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -886,12 +890,10 @@ function ProductMode() {
               )}
             </div>
             <p className="text-sm font-medium">
-              {uploading
-                ? "Yükleniyor..."
-                : "Sürükleyip bırakın veya tıklayın"}
+              {uploading ? t("common.loading") : t("create.content.product.label")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              PNG, JPG, WEBP · en fazla 8 görsel
+              PNG, JPG, WEBP
             </p>
           </div>
 
@@ -904,13 +906,13 @@ function ProductMode() {
                 >
                   <img
                     src={img}
-                    alt={`Ürün ${i + 1}`}
+                    alt={`${t("create.content.product.label")} ${i + 1}`}
                     className="size-full object-cover"
                   />
                   <button
                     onClick={() => removeImage(i)}
                     className="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Kaldır"
+                    aria-label={t("common.delete")}
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -922,8 +924,7 @@ function ProductMode() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 flex gap-3">
             <Eye className="size-4 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground">
-              Ürün fotoğrafları AI ile analiz edilecek. "Analiz et" butonuyla
-              örneği görün.
+              {t("create.content.product.tip")}
             </p>
           </div>
 
@@ -934,20 +935,18 @@ function ProductMode() {
                 <Lightbulb className="size-3.5" />
               </span>
               <div className="text-xs text-muted-foreground leading-relaxed">
-                <span className="font-medium text-foreground">İpucu: </span>
-                Net, iyi aydınlatılmış ürün fotoğrafları yükleyin. Beyaz arka plan
-                en iyi sonucu verir.
+                <span className="font-medium text-foreground">{t("create.content.product.tip")}</span>
               </div>
             </div>
             <div className="space-y-1.5">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
-                Örnek ürün tipleri
+                {t("create.content.product.examples")}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  "Akıllı kahve makinesi",
-                  "Kablosuz kulaklık",
-                  "Doğal cilt bakım seti",
+                  t("create.content.product.example1"),
+                  t("create.content.product.example2"),
+                  t("create.content.product.example3"),
                 ].map((label, i) => (
                   <motion.button
                     key={label}
@@ -956,7 +955,7 @@ function ProductMode() {
                     transition={{ delay: i * 0.05 }}
                     onClick={() => {
                       setWizard({ topic: label });
-                      toast.success("Örnek ürün tipi işaretlendi", {
+                      toast.success(t("common.selected", { count: 1 }), {
                         description: label,
                       });
                     }}
@@ -980,7 +979,7 @@ function ProductMode() {
             ) : (
               <Eye className="size-4" />
             )}
-            {analyzing ? "Analiz ediliyor..." : "Analiz et"}
+            {analyzing ? t("create.content.product.analyzing") : t("create.content.product.analyze")}
           </Button>
 
           {analysis && (
@@ -998,7 +997,7 @@ function ProductMode() {
                 <p className="text-muted-foreground">{analysis.description}</p>
                 <div>
                   <p className="text-xs font-semibold text-foreground mb-1">
-                    Öne çıkan özellikler
+                    {t("home.features.title")}
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {analysis.features.map((f, i) => (
@@ -1010,7 +1009,7 @@ function ProductMode() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-foreground mb-1">
-                    Satış noktaları
+                    {t("create.summary.ready")}
                   </p>
                   <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
                     {analysis.sellingPoints.map((s, i) => (
@@ -1031,14 +1030,15 @@ function ProductMode() {
 function StepConfig() {
   const wizard = useApp((s) => s.wizard);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
 
   const voices = getVoicesForProvider(wizard.ttsProvider);
 
   return (
     <div className="space-y-4">
       <ConfigSection
-        title="Dil ve Stil"
-        desc="Videonuzun dilini, tonunu ve görsel stilini seçin."
+        title={t("create.config.title")}
+        desc={t("create.config.subtitle")}
         icon={Palette}
         accent="from-violet-500 to-fuchsia-500"
       >
@@ -1046,14 +1046,14 @@ function StepConfig() {
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             <Globe className="size-3.5 text-muted-foreground" />
-            Dil
+            {t("create.config.language")}
           </Label>
           <Select
             value={wizard.language}
             onValueChange={(v) => setWizard({ language: v })}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Dil seçin" />
+              <SelectValue placeholder={t("create.config.language")} />
             </SelectTrigger>
             <SelectContent className="max-h-72">
               {LANGUAGES.map((l) => (
@@ -1070,15 +1070,15 @@ function StepConfig() {
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             <AudioLines className="size-3.5 text-muted-foreground" />
-            Ton
+            {t("create.config.tone")}
           </Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {TONES.map((t) => {
-              const active = wizard.tone === t.id;
+            {TONES.map((tn) => {
+              const active = wizard.tone === tn.id;
               return (
                 <button
-                  key={t.id}
-                  onClick={() => setWizard({ tone: t.id as Tone })}
+                  key={tn.id}
+                  onClick={() => setWizard({ tone: tn.id as Tone })}
                   className={cn(
                     "rounded-xl border p-3 text-left transition-all",
                     active
@@ -1086,10 +1086,10 @@ function StepConfig() {
                       : "hover:border-muted-foreground"
                   )}
                 >
-                  <div className="text-xl mb-1">{t.emoji}</div>
-                  <p className="text-sm font-medium">{t.label}</p>
+                  <div className="text-xl mb-1">{tn.emoji}</div>
+                  <p className="text-sm font-medium">{t(`tone.${tn.id}.label`)}</p>
                   <p className="text-[10px] text-muted-foreground leading-tight">
-                    {t.description}
+                    {t(`tone.${tn.id}.desc`)}
                   </p>
                 </button>
               );
@@ -1099,7 +1099,7 @@ function StepConfig() {
 
         {/* Style */}
         <div className="space-y-2">
-          <Label>Video stili</Label>
+          <Label>{t("create.config.style")}</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {STYLES.map((s) => {
               const active = wizard.style === s.id;
@@ -1136,7 +1136,7 @@ function StepConfig() {
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             <RectangleHorizontal className="size-3.5 text-muted-foreground" />
-            En-boy oranı
+            {t("create.config.aspect")}
           </Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {ASPECTS.map((a) => {
@@ -1153,7 +1153,6 @@ function StepConfig() {
                   )}
                 >
                   <p className="text-sm font-semibold">{a.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{a.hint}</p>
                 </button>
               );
             })}
@@ -1162,8 +1161,8 @@ function StepConfig() {
       </ConfigSection>
 
       <ConfigSection
-        title="Sağlayıcılar"
-        desc="Hangi LLM ile senaryo, hangi TTS ile seslendirme yapılacağını seçin."
+        title={t("create.config.providers")}
+        desc={t("create.config.providers.subtitle")}
         icon={Cpu}
         accent="from-fuchsia-500 to-pink-500"
       >
@@ -1171,7 +1170,7 @@ function StepConfig() {
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             <Cpu className="size-3.5 text-muted-foreground" />
-            LLM Sağlayıcısı
+            {t("create.config.llm")}
           </Label>
           <Select
             value={wizard.llmProvider}
@@ -1200,7 +1199,7 @@ function StepConfig() {
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
             <Mic className="size-3.5 text-muted-foreground" />
-            TTS Sağlayıcısı
+            {t("create.config.tts")}
           </Label>
           <Select
             value={wizard.ttsProvider}
@@ -1222,7 +1221,7 @@ function StepConfig() {
                   <span className="flex flex-col">
                     <span>{p.name}</span>
                     <span className="text-[10px] text-muted-foreground">
-                      {p.voices.length} ses
+                      {p.voices.length}
                     </span>
                   </span>
                 </SelectItem>
@@ -1237,7 +1236,7 @@ function StepConfig() {
           <div className="flex items-center justify-between">
             <Label className="flex items-center gap-1.5">
               <Mic className="size-3.5 text-muted-foreground" />
-              Ses
+              {t("create.config.voice")}
             </Label>
             <Button
               variant="ghost"
@@ -1253,7 +1252,7 @@ function StepConfig() {
               }
             >
               <Sparkles className="size-3.5" />
-              Otomatik öner
+              {t("create.config.voice.recommend")}
             </Button>
           </div>
           <Select
@@ -1318,15 +1317,16 @@ function ConfigSection({
 }
 
 function ProviderBadges({ requiresKey }: { requiresKey?: boolean }) {
+  const { t } = useLocale();
   return (
     <div className="flex flex-wrap gap-1">
       {requiresKey ? (
         <Badge variant="outline" className="text-amber-500 border-amber-500/40">
-          API anahtarı gerekir (Ayarlar'dan)
+          {t("create.config.keyRequired")}
         </Badge>
       ) : (
         <Badge variant="outline" className="text-emerald-500 border-emerald-500/40">
-          Yerleşik — anahtar gerekmez
+          {t("create.config.builtin")}
         </Badge>
       )}
     </div>
@@ -1338,6 +1338,7 @@ function StepSummary() {
   const wizard = useApp((s) => s.wizard);
   const resetWizard = useApp((s) => s.resetWizard);
   const go = useApp((s) => s.go);
+  const { t } = useLocale();
   const [submitting, setSubmitting] = React.useState(false);
 
   const generate = async () => {
@@ -1349,7 +1350,7 @@ function StepSummary() {
           (wizard.mode === "script"
             ? wizard.customScript.slice(0, 60)
             : wizard.topic.slice(0, 60)) ||
-          "Yeni Video",
+          t("nav.newVideo"),
         topic:
           wizard.mode === "script" ? wizard.customScript.slice(0, 200) : wizard.topic,
         mode: wizard.mode,
@@ -1372,76 +1373,74 @@ function StepSummary() {
         targetScenes: wizard.targetScenes,
       });
 
-      toast.success("Üretim başladı", {
-        description: "Senaryo, görseller, seslendirme ve altyazılar hazırlanıyor.",
+      toast.success(t("create.started"), {
+        description: t("detail.generating.subtitle"),
       });
 
       resetWizard();
       go("detail", project.id);
     } catch (e: any) {
-      toast.error("Üretim başlatılamadı", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setSubmitting(false);
     }
   };
 
   const mode = MODE_MAP[wizard.mode];
+  const langInfo = LANGUAGES.find((l) => l.code === wizard.language);
+  const toneInfo = TONES.find((tn) => tn.id === wizard.tone);
+  const styleInfo = STYLES.find((s) => s.id === wizard.style);
+  const llmInfo = LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider);
+  const ttsInfo = TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider);
+  const voiceInfo = getVoicesForProvider(wizard.ttsProvider).find((v) => v.id === wizard.voice);
 
   const summary: { label: string; value: string }[] = [
-    { label: "Mod", value: `${mode?.emoji} ${mode?.label}` },
+    { label: t("create.step.mode"), value: `${mode?.emoji} ${t(`mode.${wizard.mode}.label`)}` },
     {
-      label: "Konu",
+      label: t("create.content.topic"),
       value:
         wizard.mode === "script"
           ? `${wizard.customScript.slice(0, 80)}...`
           : wizard.topic || "—",
     },
     {
-      label: "Sahne sayısı",
+      label: t("create.content.scenes"),
       value: String(wizard.targetScenes),
     },
     {
-      label: "Dil",
-      value: LANGUAGES.find((l) => l.code === wizard.language)?.nativeName || wizard.language,
+      label: t("create.config.language"),
+      value: langInfo?.nativeName || wizard.language,
     },
     {
-      label: "Ton",
-      value: `${TONES.find((t) => t.id === wizard.tone)?.emoji} ${
-        TONES.find((t) => t.id === wizard.tone)?.label
-      }`,
+      label: t("create.config.tone"),
+      value: `${toneInfo?.emoji} ${t(`tone.${wizard.tone}.label`)}`,
     },
     {
-      label: "Stil",
-      value: STYLES.find((s) => s.id === wizard.style)?.label || wizard.style,
+      label: t("create.config.style"),
+      value: styleInfo?.label || wizard.style,
     },
     {
-      label: "En-boy",
+      label: t("create.config.aspect"),
       value: wizard.aspectRatio,
     },
     {
       label: "LLM",
-      value:
-        LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider)?.name ||
-        wizard.llmProvider,
+      value: llmInfo?.name || wizard.llmProvider,
     },
     {
       label: "TTS",
-      value:
-        TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider)?.name ||
-        wizard.ttsProvider,
+      value: ttsInfo?.name || wizard.ttsProvider,
     },
     {
-      label: "Ses",
-      value:
-        getVoicesForProvider(wizard.ttsProvider).find((v) => v.id === wizard.voice)
-          ?.name || wizard.voice,
+      label: t("create.config.voice"),
+      value: voiceInfo?.name || wizard.voice,
     },
   ];
 
   if (wizard.mode === "product") {
     summary.splice(2, 0, {
-      label: "Ürün görselleri",
-      value: `${wizard.productImages.length} görsel`,
+      label: t("create.content.product.label"),
+      value: t("create.content.scenes.count", { count: wizard.productImages.length }),
     });
   }
 
@@ -1456,10 +1455,10 @@ function StepSummary() {
             <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
               <Receipt className="size-4" />
             </span>
-            Özet
+            {t("create.summary.title")}
           </CardTitle>
           <CardDescription>
-            Tüm seçimleri kontrol edin ve üretimi başlatın.
+            {t("create.summary.subtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1483,10 +1482,9 @@ function StepSummary() {
       <Card className="bg-gradient-to-br from-violet-500/10 via-fuchsia-500/10 to-pink-500/10 border-fuchsia-500/30 glass-strong">
         <CardContent className="py-6 flex flex-col sm:flex-row items-center gap-4 justify-between">
           <div className="text-center sm:text-left">
-            <p className="text-base font-semibold">Videoyu üretmeye hazır mısın?</p>
+            <p className="text-base font-semibold">{t("create.summary.ready")}</p>
             <p className="text-xs text-muted-foreground">
-              Üretim arka planda çalışır — senaryo, görseller, seslendirme ve
-              altyazılar otomatik oluşturulur.
+              {t("create.summary.note")}
             </p>
           </div>
           <Button
@@ -1497,12 +1495,12 @@ function StepSummary() {
             {submitting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Başlatılıyor...
+                {t("common.loading")}
               </>
             ) : (
               <>
                 <Wand2 className="size-4" />
-                Videoyu Üret
+                {t("create.generate")}
               </>
             )}
           </Button>

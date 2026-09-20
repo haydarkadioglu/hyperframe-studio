@@ -7,6 +7,7 @@ import { Topbar } from "./topbar";
 import { Footer } from "./footer";
 import { ThemeToggle } from "./theme-toggle";
 import { AccentPicker } from "./accent-picker";
+import { LanguageSwitcher } from "./language-switcher";
 import { HomeView } from "@/components/views/home-view";
 import { CreateView } from "@/components/views/create-view";
 import { ProjectsView } from "@/components/views/projects-view";
@@ -22,6 +23,7 @@ function DesktopThemeToggle() {
         <AccentPicker />
         <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
         <ThemeToggle />
+        <LanguageSwitcher compact />
       </div>
     </div>
   );

@@ -1,16 +1,18 @@
 "use client";
 
 import { Cpu, AudioLines, Image as ImageIcon, Heart } from "lucide-react";
+import { useLocale } from "@/lib/use-locale";
 
 export function Footer() {
+  const { t } = useLocale();
   return (
     <footer className="mt-auto border-t border-border bg-background/60 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <Heart className="size-3 text-rose-500" />
           <span>
-            <span className="font-medium text-foreground">Hyperframe Studio</span>{" "}
-            · AI destekli video üretimi
+            <span className="font-medium text-foreground">{t("app.name")}</span>{" "}
+            · {t("app.footer.note")}
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap justify-center">

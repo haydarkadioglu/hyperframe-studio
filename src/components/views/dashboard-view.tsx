@@ -30,6 +30,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import {
   getStats,
   listProjects,
@@ -77,6 +78,7 @@ const item = {
 export function DashboardView() {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   const [stats, setStats] = React.useState<StatsData | null>(null);
   const [recent, setRecent] = React.useState<VideoProject[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -86,11 +88,11 @@ export function DashboardView() {
     setLoading(true);
     Promise.all([
       getStats().catch((e: ApiError) => {
-        toast.error("İstatistikler yüklenemedi", { description: e.message });
+        toast.error(t("common.error"), { description: e.message });
         return null;
       }),
       listProjects().catch((e: ApiError) => {
-        toast.error("Projeler yüklenemedi", { description: e.message });
+        toast.error(t("common.error"), { description: e.message });
         return [] as VideoProject[];
       }),
     ]).then(([s, p]) => {
@@ -102,7 +104,7 @@ export function DashboardView() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [t]);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -121,10 +123,9 @@ export function DashboardView() {
               <Video className="size-9" />
             </div>
             <div className="relative">
-              <p className="text-lg font-bold">Henüz video yok</p>
+              <p className="text-lg font-bold">{t("dashboard.empty.title")}</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                İlk videonu üretmek için bir mod seç, AI senaryo, görsel ve
-                seslendirmeyi senin için hazırlasın.
+                {t("dashboard.empty.subtitle")}
               </p>
             </div>
             <Button
@@ -135,7 +136,7 @@ export function DashboardView() {
               className="relative bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white border-0 shadow-lg shadow-fuchsia-500/30 min-h-[44px]"
             >
               <Wand2 className="size-4" />
-              İlk videonu oluştur
+              {t("dashboard.empty.cta")}
             </Button>
           </CardContent>
         </Card>
@@ -158,30 +159,30 @@ export function DashboardView() {
           icon={Video}
           gradient="from-violet-500 to-fuchsia-500"
           value={stats?.totals.total ?? 0}
-          label="Toplam Video"
-          subtitle="Şu ana kadar üretilen"
+          label={t("dashboard.kpi.total")}
+          subtitle=""
         />
         <KpiCard
           icon={CheckCircle2}
           gradient="from-emerald-500 to-teal-500"
           value={stats?.totals.ready ?? 0}
-          label="Hazır"
-          subtitle="Oynatmaya hazır"
+          label={t("dashboard.kpi.ready")}
+          subtitle={t("dashboard.kpi.ready.desc")}
         />
         <KpiCard
           icon={Clock}
           gradient="from-amber-500 to-orange-500"
           value={stats?.totals.totalDurationSec ?? 0}
-          label="Toplam Süre"
-          subtitle="Tüm videolar boyunca"
+          label={t("dashboard.kpi.duration")}
+          subtitle=""
           formatDurationValue
         />
         <KpiCard
           icon={Layers}
           gradient="from-cyan-500 to-blue-500"
           value={stats?.totals.totalScenes ?? 0}
-          label="Toplam Sahne"
-          subtitle="Tüm videolarda"
+          label={t("dashboard.kpi.scenes")}
+          subtitle=""
         />
       </motion.div>
 
@@ -194,14 +195,14 @@ export function DashboardView() {
         <CardHeader>
           <div className="flex items-center justify-between relative">
             <div>
-              <CardTitle className="text-base">Son 14 Gün Aktivite</CardTitle>
+              <CardTitle className="text-base">{t("dashboard.activity")}</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Günlük oluşturulan video sayısı
+                {t("dashboard.activity")}
               </p>
             </div>
             <Badge className="bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30">
               <Sparkles className="size-3" />
-              Son 14 gün
+              {t("dashboard.activity")}
             </Badge>
           </div>
         </CardHeader>
@@ -255,12 +256,12 @@ export function DashboardView() {
                     fontSize: 12,
                   }}
                   labelStyle={{ color: "#e879f9", fontWeight: 600 }}
-                  formatter={(v: number) => [`${v} video`, ""]}
+                  formatter={(v: number) => [`${v}`, ""]}
                 />
                 <Area
                   type="monotone"
                   dataKey="count"
-                  name="Video"
+                  name={t("dashboard.kpi.total")}
                   stroke="url(#activityStroke)"
                   strokeWidth={2.5}
                   fill="url(#activityFill)"
@@ -278,9 +279,9 @@ export function DashboardView() {
         <Card className="glass relative overflow-hidden">
           <div className="orb orb-sm bg-fuchsia-500/15 -bottom-12 -left-10" />
           <CardHeader className="relative">
-            <CardTitle className="text-base">Mod Dağılımı</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.mode")}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Hangi üretim modunu ne kadar kullandın
+              {t("dashboard.mode.desc")}
             </p>
           </CardHeader>
           <CardContent className="relative">
@@ -291,9 +292,9 @@ export function DashboardView() {
         <Card className="glass relative overflow-hidden">
           <div className="orb orb-sm bg-pink-500/15 -top-10 -left-10" />
           <CardHeader className="relative">
-            <CardTitle className="text-base">Dil Dağılımı</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.language")}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Videoların dil kırılımı
+              {t("dashboard.language.desc")}
             </p>
           </CardHeader>
           <CardContent className="relative">
@@ -305,14 +306,14 @@ export function DashboardView() {
       {/* Provider usage */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ProviderUsageCard
-          title="LLM Sağlayıcı Kullanımı"
+          title={t("dashboard.llmUsage")}
           icon={Cpu}
           accent="violet"
           data={stats?.distributions.byLlmProvider ?? []}
           resolver={(id) => getLLMProvider(id)?.name ?? id}
         />
         <ProviderUsageCard
-          title="TTS Sağlayıcı Kullanımı"
+          title={t("dashboard.ttsUsage")}
           icon={AudioLines}
           accent="fuchsia"
           data={stats?.distributions.byTtsProvider ?? []}
@@ -325,9 +326,9 @@ export function DashboardView() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Son Projeler</CardTitle>
+              <CardTitle className="text-base">{t("dashboard.recent")}</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                En son oluşturduğun 5 video
+                {t("dashboard.recent")}
               </p>
             </div>
             <Button
@@ -336,7 +337,7 @@ export function DashboardView() {
               onClick={() => go("projects")}
               className="text-fuchsia-500 hover:text-fuchsia-400"
             >
-              Tümünü gör
+              {t("dashboard.recent.viewAll")}
               <ArrowRight className="size-3.5" />
             </Button>
           </div>
@@ -344,7 +345,7 @@ export function DashboardView() {
         <CardContent>
           {recent.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              Henüz proje yok.
+              {t("dashboard.empty.subtitle")}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -388,7 +389,7 @@ export function DashboardView() {
                           {p.title}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {modeInfo?.emoji} {modeInfo?.label} · {p.sceneCount} sahne · {formatDuration(p.durationSec)}
+                          {modeInfo?.emoji} {t(`mode.${p.mode}.label`)} · {t("create.content.scenes.count", { count: p.sceneCount })} · {formatDuration(p.durationSec)}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
@@ -410,19 +411,20 @@ export function DashboardView() {
 }
 
 function Header() {
+  const { t } = useLocale();
   return (
     <header className="relative overflow-hidden">
       <div className="orb orb-md bg-violet-500/20 -top-20 -right-12" />
       <div className="orb orb-sm bg-fuchsia-500/15 -bottom-16 -left-10" />
       <div className="relative">
         <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
-          Genel bakış
+          {t("dashboard.subtitle")}
         </p>
         <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
-          Panel
+          {t("dashboard.title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Üretim istatistiklerin ve genel bakış
+          {t("dashboard.subtitle")}
         </p>
       </div>
     </header>
@@ -511,7 +513,7 @@ function DistributionPie({
 }) {
   const total = data.reduce((a, b) => a + b.count, 0);
   if (total === 0) {
-    return <EmptyChart label="Henüz veri yok" />;
+    return <EmptyChart label={t("common.noData")} />;
   }
   const chartData = data.map((d) => ({
     name: `${d.emoji} ${d.label}`,
@@ -590,7 +592,7 @@ function LanguageBar({
 }) {
   const total = data.reduce((a, b) => a + b.count, 0);
   if (total === 0) {
-    return <EmptyChart label="Henüz veri yok" />;
+    return <EmptyChart label={t("common.noData")} />;
   }
   const chartData = data.map((d) => ({
     name: `${d.flag} ${d.code.toUpperCase()}`,
@@ -681,6 +683,7 @@ function ProviderUsageCard({
   data: { id: string; count: number }[];
   resolver: (id: string) => string;
 }) {
+  const { t } = useLocale();
   const total = data.reduce((a, b) => a + b.count, 0);
   const accentClass =
     accent === "violet"
@@ -701,7 +704,7 @@ function ProviderUsageCard({
           <div>
             <CardTitle className="text-base">{title}</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Toplam {total} kullanım
+              {t("dashboard.totalUsage", { count: total })}
             </p>
           </div>
         </div>
@@ -709,7 +712,7 @@ function ProviderUsageCard({
       <CardContent className="space-y-2">
         {data.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            Henüz veri yok
+            {t("dashboard.empty.subtitle")}
           </p>
         ) : (
           data.map((d, i) => {
@@ -757,28 +760,29 @@ function ProviderUsageCard({
 
 // ---------- Status pill ----------
 function StatusPill({ status }: { status: VideoProject["status"] }) {
-  const map: Record<VideoProject["status"], { label: string; cls: string }> = {
+  const { t } = useLocale();
+  const map: Record<VideoProject["status"], { labelKey: string; cls: string }> = {
     draft: {
-      label: "Taslak",
+      labelKey: "common.draft",
       cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
     },
     generating: {
-      label: "Üretiliyor",
+      labelKey: "common.generating",
       cls: "bg-amber-500/15 text-amber-400 border-amber-500/30",
     },
     ready: {
-      label: "Hazır",
+      labelKey: "common.ready",
       cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     },
     error: {
-      label: "Hata",
+      labelKey: "common.error",
       cls: "bg-rose-500/15 text-rose-400 border-rose-500/30",
     },
   };
   const m = map[status];
   return (
     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", m.cls)}>
-      {m.label}
+      {t(m.labelKey)}
     </Badge>
   );
 }

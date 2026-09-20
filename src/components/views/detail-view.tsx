@@ -27,6 +27,7 @@ import {
   Share2,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import {
   MODE_MAP,
   STYLE_MAP,
@@ -85,21 +86,21 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const SCENE_TYPES: { id: SceneType; label: string }[] = [
-  { id: "title", label: "Başlık" },
-  { id: "text", label: "Metin" },
-  { id: "image", label: "Görsel" },
-  { id: "quote", label: "Alıntı" },
-  { id: "stats", label: "İstatistik" },
-  { id: "cta", label: "Çağrı (CTA)" },
+  { id: "title", label: "Title" },
+  { id: "text", label: "Text" },
+  { id: "image", label: "Image" },
+  { id: "quote", label: "Quote" },
+  { id: "stats", label: "Stats" },
+  { id: "cta", label: "CTA" },
 ];
 
 const SCENE_ANIMATIONS: { id: SceneAnimation; label: string }[] = [
   { id: "fade", label: "Fade" },
-  { id: "slide-up", label: "Yukarı kay" },
-  { id: "slide-left", label: "Sola kay" },
+  { id: "slide-up", label: "Slide up" },
+  { id: "slide-left", label: "Slide left" },
   { id: "zoom", label: "Zoom" },
-  { id: "bounce", label: "Zıpla" },
-  { id: "flip", label: "Çevir" },
+  { id: "bounce", label: "Bounce" },
+  { id: "flip", label: "Flip" },
   { id: "ken-burns", label: "Ken Burns" },
 ];
 
@@ -117,6 +118,7 @@ const ACCENT_PRESETS = [
 export function DetailView() {
   const detailId = useApp((s) => s.detailId);
   const go = useApp((s) => s.go);
+  const { t } = useLocale();
   const [project, setProject] = React.useState<VideoProject | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -146,7 +148,7 @@ export function DetailView() {
         }
       } catch (e: any) {
         if (!alive) return;
-        setError(e?.message || "Proje yüklenemedi");
+        setError(e?.message || t("common.error"));
       } finally {
         if (alive) setLoading(false);
       }
@@ -159,7 +161,7 @@ export function DetailView() {
       alive = false;
       if (timer) clearTimeout(timer);
     };
-  }, [detailId]);
+  }, [detailId, t]);
 
   const handleRerender = async () => {
     if (!project) return;
@@ -168,10 +170,10 @@ export function DetailView() {
       await renderProject(project.id, {
         targetScenes: project.sceneCount || 5,
       });
-      toast.success("Yeniden üretim başladı");
+      toast.success(t("create.started"));
       setProject({ ...project, status: "generating" });
     } catch (e: any) {
-      toast.error("Yeniden üretim başlatılamadı", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setRerendering(false);
     }
@@ -181,10 +183,10 @@ export function DetailView() {
     if (!project) return;
     try {
       await deleteProject(project.id);
-      toast.success("Proje silindi");
+      toast.success(t("projects.deleted"));
       go("projects");
     } catch (e: any) {
-      toast.error("Silme hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     }
   };
 
@@ -193,16 +195,14 @@ export function DetailView() {
     setDuplicating(true);
     try {
       const copy = await duplicateProject(project.id);
-      toast.success("Proje kopyalandı", {
-        description: "Yeni taslak oluşturuldu.",
-      });
+      toast.success(t("projects.duplicated"));
       if (copy.scenes && copy.scenes.length > 0) {
         go("detail", copy.id);
       } else {
         go("projects");
       }
     } catch (e: any) {
-      toast.error("Kopyalama hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setDuplicating(false);
     }
@@ -212,7 +212,7 @@ export function DetailView() {
     return (
       <Card className="border-dashed">
         <CardContent className="py-12 text-center text-muted-foreground">
-          Geçersiz proje.
+          {t("common.error")}
         </CardContent>
       </Card>
     );
@@ -238,11 +238,11 @@ export function DetailView() {
       <Card className="border-dashed border-rose-500/40">
         <CardContent className="py-12 text-center space-y-3">
           <AlertCircle className="size-8 text-rose-500 mx-auto" />
-          <p className="font-medium">Proje yüklenemedi</p>
-          <p className="text-sm text-muted-foreground">{error ?? "Bilinmeyen hata"}</p>
+          <p className="font-medium">{t("common.error")}</p>
+          <p className="text-sm text-muted-foreground">{error ?? t("detail.error.timeout")}</p>
           <Button variant="outline" onClick={() => go("projects")}>
             <ArrowLeft className="size-4" />
-            Projelere dön
+            {t("detail.back")}
           </Button>
         </CardContent>
       </Card>
@@ -260,7 +260,7 @@ export function DetailView() {
           className="min-h-[40px]"
         >
           <ArrowLeft className="size-4" />
-          Projelere dön
+          {t("detail.back")}
         </Button>
         <div className="flex items-center gap-1 flex-wrap justify-end">
           {project.status === "ready" && (
@@ -276,7 +276,7 @@ export function DetailView() {
               )}
             >
               <PencilLine className="size-4" />
-              {editMode ? "Düzenlemeyi Bitir" : "Sahne Düzenle"}
+              {editMode ? t("detail.finishEdit") : t("detail.editScenes")}
             </Button>
           )}
           <Button
@@ -291,7 +291,7 @@ export function DetailView() {
             ) : (
               <Copy className="size-4" />
             )}
-            Kopyala
+            {t("detail.duplicate")}
           </Button>
           <Button
             size="sm"
@@ -299,7 +299,7 @@ export function DetailView() {
             className="min-h-[40px] accent-gradient text-white border-0 shine-on-hover shadow-lg shadow-fuchsia-500/30 relative overflow-hidden"
           >
             <Share2 className="size-4" />
-            Paylaş
+            {t("detail.share")}
           </Button>
           <Button
             variant="outline"
@@ -313,7 +313,7 @@ export function DetailView() {
             ) : (
               <RefreshCw className="size-4" />
             )}
-            Yeniden Oluştur
+            {t("detail.regenerate")}
           </Button>
           <Button
             variant="outline"
@@ -322,7 +322,7 @@ export function DetailView() {
             className="text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 border-rose-500/30 min-h-[40px]"
           >
             <Trash2 className="size-4" />
-            Sil
+            {t("common.delete")}
           </Button>
         </div>
       </div>
@@ -331,7 +331,7 @@ export function DetailView() {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline" className="accent-bg-soft accent-text-soft accent-border">
-            {MODE_MAP[project.mode]?.emoji} {MODE_MAP[project.mode]?.label}
+            {MODE_MAP[project.mode]?.emoji} {t(`mode.${project.mode}.label`)}
           </Badge>
           <StatusBadge status={project.status} />
           <span className="text-xs text-muted-foreground">
@@ -352,7 +352,7 @@ export function DetailView() {
         <GeneratingView project={project} />
       ) : project.status === "error" ? (
         <ErrorView
-          message={project.errorMessage || "Bilinmeyen bir hata oluştu"}
+          message={project.errorMessage || t("detail.error.timeout")}
           onRetry={handleRerender}
         />
       ) : editMode ? (
@@ -371,14 +371,14 @@ export function DetailView() {
       <AlertDialog open={pendingDelete} onOpenChange={setPendingDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Projeyi sil?</AlertDialogTitle>
+            <AlertDialogTitle>{t("projects.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="font-medium text-foreground">“{project.title}”</span>{" "}
-              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              {t("projects.delete.desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -386,7 +386,7 @@ export function DetailView() {
               }}
               className="bg-rose-500 hover:bg-rose-600 text-white"
             >
-              Sil
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -398,34 +398,36 @@ export function DetailView() {
 }
 
 function StatusBadge({ status }: { status: VideoProject["status"] }) {
+  const { t } = useLocale();
   const map: Record<VideoProject["status"], string> = {
     draft: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
     generating: "bg-amber-500/15 text-amber-400 border-amber-500/30",
     ready: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     error: "bg-rose-500/15 text-rose-400 border-rose-500/30",
   };
-  const label: Record<VideoProject["status"], string> = {
-    draft: "Taslak",
-    generating: "Üretiliyor",
-    ready: "Hazır",
-    error: "Hata",
+  const labelKey: Record<VideoProject["status"], string> = {
+    draft: "common.draft",
+    generating: "common.generating",
+    ready: "common.ready",
+    error: "common.error",
   };
   return (
     <Badge variant="outline" className={cn("border", map[status], status === "generating" && "pulse-glow")}>
       {status === "generating" && (
         <Loader2 className="size-3 animate-spin" />
       )}
-      {label[status]}
+      {t(labelKey[status])}
     </Badge>
   );
 }
 
 function GeneratingView({ project }: { project: VideoProject }) {
+  const { t } = useLocale();
   const steps = [
-    { label: "Senaryo yazılıyor", icon: FileText },
-    { label: "Görseller üretiliyor", icon: Palette },
-    { label: "Seslendirme yapılıyor", icon: AudioLines },
-    { label: "Altyazılar oluşturuluyor", icon: CaptionsIcon },
+    { label: t("detail.generating.script"), icon: FileText },
+    { label: t("detail.generating.images"), icon: Palette },
+    { label: t("detail.generating.audio"), icon: AudioLines },
+    { label: t("detail.generating.subtitles"), icon: CaptionsIcon },
   ];
 
   const [active, setActive] = React.useState(0);
@@ -458,10 +460,9 @@ function GeneratingView({ project }: { project: VideoProject }) {
                 <Loader2 className="size-9 text-fuchsia-500 animate-spin" />
               </div>
             </div>
-            <h2 className="text-xl font-bold">Videonuz üretiliyor</h2>
+            <h2 className="text-xl font-bold">{t("detail.generating.title")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Bu işlem birkaç dakika sürebilir. Sayfayı açık tutabilirsiniz —
-              tamamlandığında otomatik oynatıcı açılır.
+              {t("detail.generating.note")}
             </p>
 
             <div className="mt-8 grid gap-2 text-left max-w-md mx-auto">
@@ -559,6 +560,7 @@ function ErrorView({
   message: string;
   onRetry: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <Card className="border-rose-500/40">
       <CardContent className="py-10 text-center space-y-4">
@@ -566,14 +568,14 @@ function ErrorView({
           <AlertCircle className="size-7" />
         </div>
         <div>
-          <p className="font-semibold">Üretim başarısız oldu</p>
+          <p className="font-semibold">{t("detail.error.title")}</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
             {message}
           </p>
         </div>
         <Button onClick={onRetry} className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0">
           <RefreshCw className="size-4" />
-          Tekrar dene
+          {t("detail.error.retry")}
         </Button>
       </CardContent>
     </Card>
@@ -581,6 +583,7 @@ function ErrorView({
 }
 
 function ReadyView({ project, onShare }: { project: VideoProject; onShare: () => void }) {
+  const { t } = useLocale();
   const modeInfo = MODE_MAP[project.mode];
   const styleInfo = STYLE_MAP[project.style];
   const langInfo = LANGUAGE_MAP[project.language];
@@ -590,30 +593,30 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
 
   const downloadSrt = () => {
     if (!project.subtitles) {
-      toast.error("Altyazı bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
     downloadTextFile(`${slug(project.title)}.srt`, project.subtitles, "text/plain");
-    toast.success("SRT indirildi");
+    toast.success(t("detail.download.srt"));
   };
 
   const downloadVtt = () => {
     if (!project.subtitles) {
-      toast.error("Altyazı bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
     const vtt = "WEBVTT\n\n" + project.subtitles.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
     downloadTextFile(`${slug(project.title)}.vtt`, vtt, "text/vtt");
-    toast.success("VTT indirildi");
+    toast.success(t("detail.download.vtt"));
   };
 
   const downloadAudio = () => {
     if (!project.audioUrl) {
-      toast.error("Ses dosyası bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
     downloadRemoteFile(project.audioUrl, `${slug(project.title)}.mp3`);
-    toast.success("Ses indirildi");
+    toast.success(t("detail.download.audio"));
   };
 
   return (
@@ -640,11 +643,11 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={downloadSrt} className="min-h-[40px] card-hover-lift">
             <FileText className="size-4" />
-            SRT İndir
+            {t("detail.download.srt")}
           </Button>
           <Button variant="outline" size="sm" onClick={downloadVtt} className="min-h-[40px] card-hover-lift">
             <Captions className="size-4" />
-            VTT İndir
+            {t("detail.download.vtt")}
           </Button>
           <Button
             variant="outline"
@@ -654,7 +657,7 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
             className="min-h-[40px] card-hover-lift"
           >
             <Download className="size-4" />
-            Sesi İndir
+            {t("detail.download.audio")}
           </Button>
           <Button
             size="sm"
@@ -662,7 +665,7 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
             className="min-h-[40px] accent-gradient text-white border-0 shine-on-hover shadow-md shadow-fuchsia-500/30 relative overflow-hidden ml-auto"
           >
             <Share2 className="size-4" />
-            Paylaş
+            {t("detail.share")}
           </Button>
         </div>
       </div>
@@ -673,23 +676,23 @@ function ReadyView({ project, onShare }: { project: VideoProject; onShare: () =>
         <Card className="glass overflow-hidden">
           <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x" />
           <CardHeader>
-            <CardTitle className="text-base">Detaylar</CardTitle>
+            <CardTitle className="text-base">{t("common.all")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <Meta icon={Clapperboard} label="Mod" value={modeInfo?.label} />
-            <Meta icon={Globe} label="Dil" value={`${langInfo?.flag} ${langInfo?.nativeName}`} />
-            <Meta icon={AudioLines} label="Ton" value={`${toneInfo?.emoji} ${toneInfo?.label}`} />
-            <Meta icon={Palette} label="Stil" value={styleInfo?.label} />
-            <Meta icon={Clock} label="Süre" value={formatDuration(project.durationSec)} />
-            <Meta icon={Layers} label="Sahne sayısı" value={String(project.sceneCount)} />
+            <Meta icon={Clapperboard} label={t("detail.meta.mode")} value={modeInfo ? t(`mode.${project.mode}.label`) : undefined} />
+            <Meta icon={Globe} label={t("detail.meta.language")} value={`${langInfo?.flag ?? ""} ${langInfo?.nativeName ?? ""}`} />
+            <Meta icon={AudioLines} label={t("detail.meta.tone")} value={`${toneInfo?.emoji ?? ""} ${t(`tone.${project.tone}.label`)}`} />
+            <Meta icon={Palette} label={t("detail.meta.style")} value={styleInfo?.label} />
+            <Meta icon={Clock} label={t("detail.meta.duration")} value={formatDuration(project.durationSec)} />
+            <Meta icon={Layers} label={t("detail.meta.scenes")} value={String(project.sceneCount)} />
           </CardContent>
         </Card>
 
         <Card className="glass">
           <CardHeader>
-            <CardTitle className="text-base">Sahneler</CardTitle>
+            <CardTitle className="text-base">{t("detail.scenes.title")}</CardTitle>
             <CardDescription>
-              Tıklayarak o sahneye git
+              {t("detail.scenes.hint")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -783,6 +786,7 @@ function SceneEditor({
   onSaved: (updated: VideoProject) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLocale();
   const [localScenes, setLocalScenes] = React.useState<Scene[]>(() =>
     project.scenes.map((s) => ({ ...s }))
   );
@@ -817,15 +821,15 @@ function SceneEditor({
       index: newIdx,
       type: "text",
       title: "",
-      text: "Yeni sahne metni",
-      narration: "Yeni sahne seslendirmesi.",
-      subtitle: "Yeni sahne",
+      text: "",
+      narration: "",
+      subtitle: "",
       durationMs: 4000,
       animation: "fade",
       accentColor: "#d946ef",
     };
     setLocalScenes((prev) => [...prev, newScene]);
-    toast.success("Yeni sahne eklendi");
+    toast.success(t("detail.sceneEditor.add"));
   };
 
   const handleDeleteScene = (idx: number) => {
@@ -835,7 +839,7 @@ function SceneEditor({
         .map((s, i) => ({ ...s, index: i }))
     );
     setPendingDeleteIdx(null);
-    toast.success("Sahne silindi");
+    toast.success(t("projects.deleted"));
   };
 
   const handleSave = async () => {
@@ -844,12 +848,10 @@ function SceneEditor({
       const updated = await updateProject(project.id, {
         scenes: localScenes,
       });
-      toast.success("Sahnelar kaydedildi ve altyazılar güncellendi", {
-        description: `${localScenes.length} sahne sunucuya gönderildi.`,
-      });
+      toast.success(t("detail.sceneEditor.saved"));
       onSaved(updated);
     } catch (e: any) {
-      toast.error("Kaydetme hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setSaving(false);
     }
@@ -872,15 +874,15 @@ function SceneEditor({
             <div>
               <CardTitle className="text-base flex items-center gap-2">
                 <PencilLine className="size-4 text-fuchsia-500" />
-                Sahne Düzenleyici
+                {t("detail.sceneEditor.title")}
               </CardTitle>
               <CardDescription>
-                Değişiklikler canlı önizlemede görünür. Kaydedince altyazılar otomatik yeniden oluşturulur.
+                {t("detail.sceneEditor.subtitle")}
               </CardDescription>
             </div>
             {dirty && (
               <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30">
-                Kaydedilmemiş değişiklik
+                {t("common.error")}
               </Badge>
             )}
           </div>
@@ -917,7 +919,7 @@ function SceneEditor({
         className="w-full min-h-[44px] border-dashed border-fuchsia-500/40 text-fuchsia-500 hover:bg-fuchsia-500/5 hover:text-fuchsia-400"
       >
         <Plus className="size-4" />
-        Sahne Ekle
+        {t("detail.sceneEditor.add")}
       </Button>
 
       {/* Sticky action bar */}
@@ -926,8 +928,8 @@ function SceneEditor({
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 animated-gradient-x" />
           <CardContent className="py-3 flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{localScenes.length}</span> sahne ·
-              {dirty ? " kaydedilmedi" : " kaydedildi"}
+              <span className="font-medium text-foreground">{localScenes.length}</span>{" "}
+              {t("create.content.scenes.count", { count: localScenes.length })}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -937,7 +939,7 @@ function SceneEditor({
                 className="min-h-[40px]"
               >
                 <X className="size-4" />
-                İptal
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleSave}
@@ -949,7 +951,7 @@ function SceneEditor({
                 ) : (
                   <Save className="size-4" />
                 )}
-                {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+                {saving ? t("common.loading") : t("detail.sceneEditor.save")}
               </Button>
             </div>
           </CardContent>
@@ -963,16 +965,16 @@ function SceneEditor({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sahneyi sil?</AlertDialogTitle>
+            <AlertDialogTitle>{t("projects.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="font-medium text-foreground">
-                {pendingDeleteIdx !== null ? `${pendingDeleteIdx + 1}. sahne` : "Sahne"}
+                {pendingDeleteIdx !== null ? `${t("player.scene")} ${pendingDeleteIdx + 1}` : t("player.scene")}
               </span>{" "}
-              silinecek. Kalan sahneler otomatik yeniden numaralandırılır.
+              {t("projects.delete.desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -981,7 +983,7 @@ function SceneEditor({
               className="bg-rose-500 hover:bg-rose-600 text-white"
             >
               <Trash2 className="size-4" />
-              Sil
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -991,13 +993,13 @@ function SceneEditor({
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Kaydedilmemiş değişiklikler var</AlertDialogTitle>
+            <AlertDialogTitle>{t("detail.sceneEditor.dirty")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Çıkarsan tüm düzenlemeler kaybolur. Devam edilsin mi?
+              {t("detail.sceneEditor.dirty")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -1006,7 +1008,7 @@ function SceneEditor({
               }}
               className="bg-rose-500 hover:bg-rose-600 text-white"
             >
-              Yine de çık
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1032,11 +1034,12 @@ function SceneEditorCard({
   onChange: (patch: Partial<Scene>) => void;
   onDelete: () => void;
 }) {
+  const { t } = useLocale();
   const [regenerating, setRegenerating] = React.useState(false);
 
   const handleRegenImage = async () => {
     if (!scene.imagePrompt?.trim()) {
-      toast.error("Önce bir görsel promptu girin");
+      toast.error(t("common.error"));
       return;
     }
     setRegenerating(true);
@@ -1047,9 +1050,9 @@ function SceneEditorCard({
         sceneIdx: idx,
       });
       onChange({ imageUrl: res.imageUrl });
-      toast.success("Görsel yeniden üretildi");
+      toast.success(t("common.ready"));
     } catch (e: any) {
-      toast.error("Görsel üretilemedi", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setRegenerating(false);
     }
@@ -1079,7 +1082,7 @@ function SceneEditorCard({
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold truncate">
-                  {scene.title || scene.subtitle || `Sahne ${idx + 1}`}
+                  {scene.title || scene.subtitle || `${t("player.scene")} ${idx + 1}`}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   {scene.type} · {scene.animation} · {(scene.durationMs / 1000).toFixed(1)}s
@@ -1091,7 +1094,7 @@ function SceneEditorCard({
               variant="ghost"
               onClick={onDelete}
               className="size-8 shrink-0 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-              aria-label="Sahneyi sil"
+              aria-label={t("common.delete")}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -1101,14 +1104,14 @@ function SceneEditorCard({
           {/* Live thumbnail + selects */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-1">
-              <Label className="text-xs text-muted-foreground">Önizleme</Label>
+              <Label className="text-xs text-muted-foreground">{t("detail.sceneEditor.title2")}</Label>
               <div className="mt-1.5 rounded-lg overflow-hidden border border-border">
                 <SceneThumbnail scene={scene} style={style} aspect={aspect} />
               </div>
             </div>
             <div className="md:col-span-2 grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Tür</Label>
+                <Label className="text-xs">{t("detail.sceneEditor.type")}</Label>
                 <Select
                   value={scene.type}
                   onValueChange={(v) => onChange({ type: v as SceneType })}
@@ -1117,16 +1120,16 @@ function SceneEditorCard({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SCENE_TYPES.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.label}
+                    {SCENE_TYPES.map((st) => (
+                      <SelectItem key={st.id} value={st.id}>
+                        {st.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Animasyon</Label>
+                <Label className="text-xs">{t("detail.sceneEditor.animation")}</Label>
                 <Select
                   value={scene.animation}
                   onValueChange={(v) => onChange({ animation: v as SceneAnimation })}
@@ -1148,17 +1151,17 @@ function SceneEditorCard({
 
           {/* Title */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Başlık (opsiyonel)</Label>
+            <Label className="text-xs">{t("detail.sceneEditor.title2")} ({t("common.optional")})</Label>
             <Input
               value={scene.title || ""}
               onChange={(e) => onChange({ title: e.target.value })}
-              placeholder="Sahne başlığı"
+              placeholder={t("detail.sceneEditor.title2")}
             />
           </div>
 
           {/* Text */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Ekranda görünen metin</Label>
+            <Label className="text-xs">{t("detail.sceneEditor.text")}</Label>
             <Textarea
               value={scene.text}
               onChange={(e) => onChange({ text: e.target.value })}
@@ -1170,7 +1173,7 @@ function SceneEditorCard({
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <AudioLines className="size-3" />
-              Seslendirme metni (TTS)
+              {t("detail.sceneEditor.narration")}
             </Label>
             <Textarea
               value={scene.narration}
@@ -1181,7 +1184,7 @@ function SceneEditorCard({
 
           {/* Subtitle */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Altyazı satırı</Label>
+            <Label className="text-xs">{t("detail.sceneEditor.subtitle")}</Label>
             <Input
               value={scene.subtitle}
               onChange={(e) => onChange({ subtitle: e.target.value })}
@@ -1193,13 +1196,13 @@ function SceneEditorCard({
           <div className="space-y-1.5">
             <Label className="text-xs flex items-center gap-1.5">
               <ImageIcon className="size-3" />
-              Görsel promptu (İngilizce)
+              {t("detail.sceneEditor.imagePrompt")}
             </Label>
             <div className="flex gap-2">
               <Input
                 value={scene.imagePrompt || ""}
                 onChange={(e) => onChange({ imagePrompt: e.target.value })}
-                placeholder="Örn: cinematic shot of a futuristic city at sunset"
+                placeholder="cinematic shot of a futuristic city at sunset"
               />
               <Button
                 variant="outline"
@@ -1212,13 +1215,13 @@ function SceneEditorCard({
                 ) : (
                   <RefreshCw className="size-4" />
                 )}
-                {regenerating ? "Üretiliyor..." : "Yeniden Üret"}
+                {regenerating ? t("common.loading") : t("detail.sceneEditor.regenerateImage")}
               </Button>
             </div>
             {scene.imageUrl && (
               <p className="text-[10px] text-emerald-500 flex items-center gap-1">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
-                Görsel mevcut
+                {t("common.ready")}
               </p>
             )}
           </div>
@@ -1226,7 +1229,7 @@ function SceneEditorCard({
           {/* Duration */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Süre</Label>
+              <Label className="text-xs">{t("detail.sceneEditor.duration")}</Label>
               <Badge variant="secondary" className="tabular-nums">
                 {(scene.durationMs / 1000).toFixed(1)}s
               </Badge>
@@ -1246,7 +1249,7 @@ function SceneEditorCard({
 
           {/* Accent color */}
           <div className="space-y-2">
-            <Label className="text-xs">Vurgu rengi</Label>
+            <Label className="text-xs">{t("detail.sceneEditor.accent")}</Label>
             <div className="flex flex-wrap items-center gap-2">
               {ACCENT_PRESETS.map((c) => (
                 <button
@@ -1259,7 +1262,7 @@ function SceneEditorCard({
                       : "ring-1 ring-border"
                   )}
                   style={{ background: c }}
-                  aria-label={`Renk ${c}`}
+                  aria-label={`${t("detail.sceneEditor.accent")} ${c}`}
                 />
               ))}
               <label className="relative size-7 rounded-full overflow-hidden cursor-pointer ring-1 ring-border">
@@ -1268,7 +1271,7 @@ function SceneEditorCard({
                   value={scene.accentColor || "#d946ef"}
                   onChange={(e) => onChange({ accentColor: e.target.value })}
                   className="absolute inset-0 size-full cursor-pointer opacity-0"
-                  aria-label="Özel renk"
+                  aria-label={t("detail.sceneEditor.accent")}
                 />
                 <span
                   className="absolute inset-0"

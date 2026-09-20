@@ -20,6 +20,7 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import { MODES, MODE_MAP, STYLE_MAP, LANGUAGES, TONES, LLM_PROVIDERS, TTS_PROVIDERS } from "@/lib/providers";
 import {
   listProjects,
@@ -52,95 +53,97 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
 };
 
+type IconType = React.ComponentType<{ className?: string }>;
+
 const FEATURES: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  desc: string;
+  icon: IconType;
+  titleKey: string;
+  descKey: string;
   color: string;
 }[] = [
   {
     icon: Layers,
-    title: "Hyperframes Animasyon",
-    desc: "Sahne sahne, sinematik geçişlerle akan animasyonlu oynatıcı.",
+    titleKey: "home.features.hyperframes",
+    descKey: "home.features.hyperframes.desc",
     color: "from-violet-500 to-fuchsia-500",
   },
   {
     icon: Cpu,
-    title: "Çoklu LLM",
-    desc: "Z.ai GLM, OpenAI GPT, Claude, Gemini — istediğin senaryo motorunu seç.",
+    titleKey: "home.features.multiLlm",
+    descKey: "home.features.multiLlm.desc",
     color: "from-fuchsia-500 to-pink-500",
   },
   {
     icon: AudioLines,
-    title: "Çoklu TTS",
-    desc: "Z.ai, ElevenLabs, OpenAI — gerçekçi çoklu dil seslendirme.",
+    titleKey: "home.features.multiTts",
+    descKey: "home.features.multiTts.desc",
     color: "from-emerald-500 to-teal-500",
   },
   {
     icon: Eye,
-    title: "Ürün Fotoğrafı Analizi (VLM)",
-    desc: "Görseli yükle, VLM ürünü tanımlasın, tanıtım videosu oluşsun.",
+    titleKey: "home.features.vlm",
+    descKey: "home.features.vlm.desc",
     color: "from-amber-500 to-orange-500",
   },
   {
     icon: Captions,
-    title: "YouTube Altyazı (SRT/VTT)",
-    desc: "Sahnelere göre zamanlanmış altyazı dosyası indirmesi tek tıkla.",
+    titleKey: "home.features.subtitles",
+    descKey: "home.features.subtitles.desc",
     color: "from-rose-500 to-red-500",
   },
   {
     icon: Globe2,
-    title: "12 Dil Desteği",
-    desc: "Türkçe, İngilizce, Çince, Arapça, Hintçe ve 7 dil daha.",
+    titleKey: "home.features.languages",
+    descKey: "home.features.languages.desc",
     color: "from-sky-500 to-cyan-500",
   },
   {
     icon: Palette,
-    title: "İçerik Duyarlı Tonlama",
-    desc: "8 farklı ton: profesyonel, enerjik, sakin, dramatik, samimi, ilham verici, haber, belgesel.",
+    titleKey: "home.features.tones",
+    descKey: "home.features.tones.desc",
     color: "from-purple-500 to-violet-500",
   },
   {
     icon: ImageIcon,
-    title: "Sahne Animasyon Stilleri",
-    desc: "Modern, sinematik, eğlenceli, minimal, kurumsal, canlı, zarif, cesur.",
+    titleKey: "home.features.styles",
+    descKey: "home.features.styles.desc",
     color: "from-teal-500 to-emerald-500",
   },
 ];
 
-const KPI_PILLS: { label: string; value: number; suffix?: string }[] = [
-  { label: "Dil", value: LANGUAGES.length },
-  { label: "Ton", value: TONES.length },
-  { label: "Mod", value: MODES.length },
-  { label: "LLM", value: LLM_PROVIDERS.length },
-  { label: "TTS", value: TTS_PROVIDERS.length },
+const KPI_PILLS: { labelKey: string; value: number }[] = [
+  { labelKey: "home.kpi.languages", value: LANGUAGES.length },
+  { labelKey: "home.kpi.tones", value: TONES.length },
+  { labelKey: "home.kpi.modes", value: MODES.length },
+  { labelKey: "home.kpi.llm", value: LLM_PROVIDERS.length },
+  { labelKey: "home.kpi.tts", value: TTS_PROVIDERS.length },
 ];
 
 const HOW_IT_WORKS: {
   step: string;
-  title: string;
+  titleKey: string;
   desc: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: IconType;
   color: string;
 }[] = [
   {
     step: "1",
-    title: "Konu/Fotoğraf Gir",
-    desc: "Bir konu yaz, ürün fotoğrafları yükle ya da hazır senaryonu yapıştır. Modunu seç.",
+    titleKey: "home.how.step1",
+    desc: "",
     icon: PenLine,
     color: "from-violet-500 to-fuchsia-500",
   },
   {
     step: "2",
-    title: "AI Üretir",
-    desc: "LLM senaryoyu sahnelere böler, görseller üretilir, TTS seslendirir, altyazılar oluşturulur.",
+    titleKey: "home.how.step2",
+    desc: "",
     icon: Sparkles,
     color: "from-fuchsia-500 to-pink-500",
   },
   {
     step: "3",
-    title: "İndir & Paylaş",
-    desc: "Animasyonlu oynatıcıda izle, SRT/VTT altyazı ve ses dosyasını indir, YouTube'a yükle.",
+    titleKey: "home.how.step3",
+    desc: "",
     icon: MousePointerClick,
     color: "from-pink-500 to-rose-500",
   },
@@ -163,6 +166,7 @@ function useCountUp(target: number, duration = 0.9) {
 export function HomeView() {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
 
   const [recent, setRecent] = React.useState<VideoProject[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -175,7 +179,7 @@ export function HomeView() {
         if (alive) setRecent(p.slice(0, 6));
       })
       .catch((e: ApiError) => {
-        toast.error("Projeler yüklenemedi", { description: e.message });
+        toast.error(e.message);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -212,18 +216,15 @@ export function HomeView() {
             className="mb-5 bg-background/50 backdrop-blur border-fuchsia-500/40 text-fuchsia-300"
           >
             <Sparkles className="size-3" />
-            AI Video Creator
+            {t("home.badge")}
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] text-balance">
-            <span className="accent-text glow-text inline-block">AI ile saniyeler</span>
+            <span className="accent-text glow-text inline-block">{t("home.hero.title1")}</span>
             <br />
-            <span className="accent-text glow-text inline-block">içinde video üret</span>
+            <span className="accent-text glow-text inline-block">{t("home.hero.title2")}</span>
           </h1>
           <p className="mt-6 text-base sm:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-            Hyperframes animasyonları, LLM senaryo, TTS seslendirme, çoklu dil ve
-            provider desteği ile tek tıkla profesyonel video üretin. Ürün
-            fotoğraflarınızı VLM ile analiz ettirin, YouTube uyumlu SRT/VTT
-            altyazıları otomatik alın.
+            {t("home.hero.subtitle")}
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button
@@ -235,7 +236,7 @@ export function HomeView() {
               className="accent-gradient text-white shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden border-0"
             >
               <Wand2 className="size-4" />
-              Hemen Başla
+              {t("home.hero.cta")}
             </Button>
             <Button
               size="lg"
@@ -244,7 +245,7 @@ export function HomeView() {
               className="min-h-[44px]"
             >
               <Layers className="size-4" />
-              Şablonlara Göz At
+              {t("home.hero.templates")}
             </Button>
           </div>
         </div>
@@ -258,8 +259,8 @@ export function HomeView() {
         className="flex flex-wrap items-center gap-3"
       >
         {KPI_PILLS.map((pill) => (
-          <motion.div key={pill.label} variants={item}>
-            <KPill {...pill} />
+          <motion.div key={pill.labelKey} variants={item}>
+            <KPill labelKey={pill.labelKey} value={pill.value} />
           </motion.div>
         ))}
       </motion.section>
@@ -267,9 +268,9 @@ export function HomeView() {
       {/* Modes */}
       <section>
         <SectionHeader
-          eyebrow="Mod seçin"
-          title="Nasıl başlayacaksın?"
-          desc="Dört farklı başlangıç yolu: konu yaz, ürün yükle, senaryo ver veya YouTube için üret."
+          eyebrow={t("home.modes.title")}
+          title={t("home.modes.heading")}
+          desc={t("home.modes.subtitle")}
         />
         <motion.div
           variants={container}
@@ -297,16 +298,16 @@ export function HomeView() {
                     >
                       {mode.emoji}
                     </div>
-                    <CardTitle className="mt-3">{mode.label}</CardTitle>
+                    <CardTitle className="mt-3">{t(`mode.${mode.id}.label`)}</CardTitle>
                     <CardDescription className="mt-1">
-                      {mode.description}
+                      {t(`mode.${mode.id}.desc`)}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="mt-auto">
                     {/* divider-gradient underline on hover */}
                     <div className="divider-gradient opacity-0 group-hover:opacity-100 transition-opacity mb-2" aria-hidden />
                     <span className="inline-flex items-center gap-1 text-sm font-medium text-fuchsia-500 transition-all group-hover:gap-2">
-                      Başla <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+                      {t("home.hero.cta")} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
                     </span>
                   </CardContent>
                 </Card>
@@ -319,9 +320,9 @@ export function HomeView() {
       {/* How it works */}
       <section>
         <SectionHeader
-          eyebrow="Nasıl Çalışır?"
-          title="3 adımda videon hazır"
-          desc="Konuyu gir, AI üretsin, indir & paylaş. Karmaşık kurulum yok."
+          eyebrow={t("home.how.title")}
+          title={t("home.how.heading")}
+          desc={t("home.how.subtitle")}
         />
         <div className="relative mt-8">
           {/* Connecting line on md+ — animated gradient */}
@@ -352,10 +353,7 @@ export function HomeView() {
                           {s.step}
                         </span>
                       </div>
-                      <h3 className="text-base font-semibold">{s.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                        {s.desc}
-                      </p>
+                      <h3 className="text-base font-semibold">{t(s.titleKey)}</h3>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -369,9 +367,9 @@ export function HomeView() {
       <section className="relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0 mesh-radial opacity-60 pointer-events-none" />
         <SectionHeader
-          eyebrow="Öne çıkan özellikler"
-          title="Tek stüdyo, tüm araçlar"
-          desc="Senaryo, seslendirme, görsel üretimi, altyazı ve animasyon — hepsi tek yerde."
+          eyebrow={t("home.features.title")}
+          title={t("home.features.heading")}
+          desc={t("home.features.subtitle")}
         />
         <motion.div
           variants={container}
@@ -384,7 +382,7 @@ export function HomeView() {
             const Icon = f.icon;
             return (
               <motion.div
-                key={f.title}
+                key={f.titleKey}
                 variants={item}
                 whileHover={{ y: -4, rotate: -0.5 }}
               >
@@ -397,9 +395,9 @@ export function HomeView() {
                       {/* gradient ring on hover */}
                       <span className="absolute -inset-1 rounded-xl ring-1 ring-fuchsia-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
-                    <CardTitle className="text-base mt-3">{f.title}</CardTitle>
+                    <CardTitle className="text-base mt-3">{t(f.titleKey)}</CardTitle>
                     <CardDescription className="mt-1 text-xs leading-relaxed">
-                      {f.desc}
+                      {t(f.descKey)}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -413,8 +411,8 @@ export function HomeView() {
       <section>
         <div className="flex items-end justify-between mb-6">
           <SectionHeader
-            eyebrow="Son projeler"
-            title="Yakın zamanda oluşturdukların"
+            eyebrow={t("home.recent.subtitle")}
+            title={t("home.recent.title")}
             desc=""
             compact
           />
@@ -424,7 +422,7 @@ export function HomeView() {
             onClick={() => go("projects")}
             className="text-fuchsia-500 hover:text-fuchsia-400"
           >
-            Tümünü Gör
+            {t("home.recent.viewAll")}
             <ArrowRight className="size-3.5" />
           </Button>
         </div>
@@ -442,10 +440,7 @@ export function HomeView() {
                 <FolderOpen className="size-5" />
               </div>
               <div>
-                <p className="font-medium">Henüz proje yok</p>
-                <p className="text-sm text-muted-foreground">
-                  İlk videonu üretmek için hemen başla.
-                </p>
+                <p className="font-medium">{t("home.recent.empty")}</p>
               </div>
               <Button
                 onClick={() => {
@@ -455,60 +450,57 @@ export function HomeView() {
                 className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-0"
               >
                 <Wand2 className="size-4" />
-                Yeni Video
+                {t("nav.newVideo")}
               </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {recent.map((p) => {
-              const modeInfo = MODE_MAP[p.mode];
-              return (
-                <motion.button
-                  key={p.id}
-                  whileHover={{ y: -3 }}
-                  onClick={() => go("detail", p.id)}
-                  className="text-left group"
-                >
-                  <div className="relative overflow-hidden rounded-xl border border-border aspect-video bg-muted group/card shine-on-hover card-hover-lift">
-                    {p.thumbnailUrl ? (
-                      <img
-                        src={p.thumbnailUrl}
-                        alt={p.title}
-                        className="size-full object-cover transition-transform group-hover/card:scale-105"
-                      />
-                    ) : (
-                      <div
-                        className={`size-full grid place-items-center bg-gradient-to-br ${
-                          (p.style && STYLE_MAP[p.style]?.gradient) ||
-                          "from-violet-500 to-fuchsia-500"
-                        }`}
-                      >
-                        <span className="text-3xl">{modeInfo?.emoji ?? "🎬"}</span>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                    <div className="absolute inset-0 grid place-items-center opacity-0 group-hover/card:opacity-100 transition-opacity">
-                      <PlayCircle className="size-9 text-white drop-shadow animate-pulse" />
+            {recent.map((p) => (
+              <motion.button
+                key={p.id}
+                whileHover={{ y: -3 }}
+                onClick={() => go("detail", p.id)}
+                className="text-left group"
+              >
+                <div className="relative overflow-hidden rounded-xl border border-border aspect-video bg-muted group/card shine-on-hover card-hover-lift">
+                  {p.thumbnailUrl ? (
+                    <img
+                      src={p.thumbnailUrl}
+                      alt={p.title}
+                      className="size-full object-cover transition-transform group-hover/card:scale-105"
+                    />
+                  ) : (
+                    <div
+                      className={`size-full grid place-items-center bg-gradient-to-br ${
+                        (p.style && STYLE_MAP[p.style]?.gradient) ||
+                        "from-violet-500 to-fuchsia-500"
+                      }`}
+                    >
+                      <span className="text-3xl">{MODE_MAP[p.mode]?.emoji ?? "🎬"}</span>
                     </div>
-                    <div className="absolute bottom-1 left-1 right-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <StatusDot status={p.status} />
-                        <span className="rounded bg-black/60 px-1 text-[10px] text-white tabular-nums">
-                          {formatDuration(p.durationSec)}
-                        </span>
-                      </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute inset-0 grid place-items-center opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <PlayCircle className="size-9 text-white drop-shadow animate-pulse" />
+                  </div>
+                  <div className="absolute bottom-1 left-1 right-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <StatusDot status={p.status} />
+                      <span className="rounded bg-black/60 px-1 text-[10px] text-white tabular-nums">
+                        {formatDuration(p.durationSec)}
+                      </span>
                     </div>
                   </div>
-                  <div className="mt-1.5">
-                    <p className="text-xs font-medium truncate">{p.title}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {timeAgo(p.createdAt)}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
+                </div>
+                <div className="mt-1.5">
+                  <p className="text-xs font-medium truncate">{p.title}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {timeAgo(p.createdAt)}
+                  </p>
+                </div>
+              </motion.button>
+            ))}
           </div>
         )}
       </section>
@@ -516,14 +508,15 @@ export function HomeView() {
   );
 }
 
-function KPill({ label, value }: { label: string; value: number; suffix?: string }) {
+function KPill({ labelKey, value }: { labelKey: string; value: number }) {
+  const { t } = useLocale();
   const count = useCountUp(value);
   return (
     <div className="glass rounded-full px-4 py-2 flex items-center gap-2.5">
       <span className="text-lg font-bold tabular-nums text-gradient">
         {count}
       </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs text-muted-foreground">{t(labelKey)}</span>
     </div>
   );
 }

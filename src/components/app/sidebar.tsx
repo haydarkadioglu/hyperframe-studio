@@ -12,25 +12,27 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useApp, type ViewName } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageSwitcher } from "./language-switcher";
 import { listProjects, type ApiError } from "@/lib/api-client";
 
 interface NavItem {
   id: ViewName;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "home", label: "Ana Sayfa", icon: LayoutDashboard },
-  { id: "create", label: "Video Oluştur", icon: Clapperboard },
-  { id: "projects", label: "Projelerim", icon: FolderOpen },
-  { id: "dashboard", label: "Panel", icon: BarChart3 },
-  { id: "templates", label: "Şablonlar", icon: LayoutTemplate },
-  { id: "settings", label: "Ayarlar", icon: Settings },
+  { id: "home", labelKey: "nav.home", icon: LayoutDashboard },
+  { id: "create", labelKey: "nav.create", icon: Clapperboard },
+  { id: "projects", labelKey: "nav.projects", icon: FolderOpen },
+  { id: "dashboard", labelKey: "nav.dashboard", icon: BarChart3 },
+  { id: "templates", labelKey: "nav.templates", icon: LayoutTemplate },
+  { id: "settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 function BrandLogo({ compact = false }: { compact?: boolean }) {
@@ -60,6 +62,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const view = useApp((s) => s.view);
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
 
   return (
     <nav className="flex flex-col gap-1">
@@ -111,7 +114,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Icon className="size-4 transition-transform group-hover:scale-110" />
             </span>
-            <span className="relative">{item.label}</span>
+            <span className="relative">{t(item.labelKey)}</span>
             {active && (
               <span className="relative ml-auto size-1.5 rounded-full bg-fuchsia-500" />
             )}
@@ -125,6 +128,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 function NewVideoButton({ onClick }: { onClick?: () => void }) {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   return (
     <Button
       onClick={() => {
@@ -135,13 +139,14 @@ function NewVideoButton({ onClick }: { onClick?: () => void }) {
       className="w-full min-h-[44px] accent-gradient text-white shine-on-hover shadow-lg shadow-fuchsia-500/30 border-0 relative overflow-hidden"
     >
       <Sparkles className="size-4" />
-      Yeni Video
+      {t("nav.newVideo")}
     </Button>
   );
 }
 
 function SidebarStatsBadge() {
   const go = useApp((s) => s.go);
+  const { t } = useLocale();
   const [count, setCount] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -169,7 +174,7 @@ function SidebarStatsBadge() {
           <span className="grid size-6 place-items-center rounded-md bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 text-fuchsia-500">
             <FolderOpen className="size-3.5" />
           </span>
-          Toplam proje
+          {t("nav.stats", { count })}
         </span>
         <span className="text-sm font-bold tabular-nums accent-text animated-gradient-x bg-[length:200%_100%] inline-block">
           {count}
@@ -180,6 +185,7 @@ function SidebarStatsBadge() {
 }
 
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useLocale();
   return (
     <div className="flex h-full flex-col gap-6 p-4">
       <div className="px-1 py-2">
@@ -193,9 +199,8 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
       <div className="rounded-xl border border-border/60 bg-muted/40 p-3 flex items-center justify-between gap-2">
         <div className="flex-1">
           <p className="text-[11px] leading-relaxed text-muted-foreground">
-            <span className="font-medium accent-text-soft">Hyperframe Studio</span>{" "}
-            · z-ai-web-dev-sdk ile çalışır. LLM, TTS, VLM ve görsel üretimi yerleşik
-            olarak desteklenir.
+            <span className="font-medium accent-text-soft">{t("app.name")}</span>{" "}
+            · {t("app.footer.built")}
           </p>
         </div>
       </div>
@@ -215,6 +220,7 @@ export function Sidebar() {
 export function MobileNav() {
   const open = useApp((s) => s.mobileNavOpen);
   const setOpen = useApp((s) => s.setMobileNavOpen);
+  const { t } = useLocale();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -222,7 +228,7 @@ export function MobileNav() {
         side="left"
         className="w-72 max-w-[85vw] p-0 bg-sidebar/95 backdrop-blur-xl"
       >
-        <SheetTitle className="sr-only">Menü</SheetTitle>
+        <SheetTitle className="sr-only">{t("nav.menu")}</SheetTitle>
         <div className="flex items-center justify-between p-4 pb-2">
           <BrandLogo />
           <Button
@@ -239,8 +245,11 @@ export function MobileNav() {
         </div>
         <div className="p-3 border-t border-border">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Tema</span>
-            <ThemeToggle />
+            <span className="text-xs text-muted-foreground">{t("nav.theme")}</span>
+            <div className="flex items-center gap-1">
+              <LanguageSwitcher compact />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </SheetContent>

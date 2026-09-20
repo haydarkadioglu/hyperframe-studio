@@ -23,6 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import { MODE_MAP, STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
 import type { VideoProject, ProjectStatus } from "@/lib/types";
 import {
@@ -77,17 +78,18 @@ type BulkBusy = "duplicate" | "delete" | "export" | null;
 
 const STATUS_META: Record<
   ProjectStatus,
-  { label: string; cls: string; dot: string }
+  { labelKey: string; cls: string; dot: string }
 > = {
-  draft: { label: "Taslak", cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30", dot: "bg-zinc-400" },
-  generating: { label: "Üretiliyor", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30", dot: "bg-amber-400 animate-pulse" },
-  ready: { label: "Hazır", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
-  error: { label: "Hata", cls: "bg-rose-500/15 text-rose-400 border-rose-500/30", dot: "bg-rose-500" },
+  draft: { labelKey: "common.draft", cls: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30", dot: "bg-zinc-400" },
+  generating: { labelKey: "common.generating", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30", dot: "bg-amber-400 animate-pulse" },
+  ready: { labelKey: "common.ready", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
+  error: { labelKey: "common.error", cls: "bg-rose-500/15 text-rose-400 border-rose-500/30", dot: "bg-rose-500" },
 };
 
 export function ProjectsView() {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
   const [projects, setProjects] = React.useState<VideoProject[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filter, setFilter] = React.useState<FilterKey>("all");
@@ -109,9 +111,9 @@ export function ProjectsView() {
     setLoading(true);
     listProjects()
       .then((p) => setProjects(p))
-      .catch((e: ApiError) => toast.error("Projeler yüklenemedi", { description: e.message }))
+      .catch((e: ApiError) => toast.error(t("common.error"), { description: e.message }))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     load();
@@ -153,10 +155,10 @@ export function ProjectsView() {
     setDeleting(true);
     try {
       await deleteProject(pendingDelete.id);
-      toast.success("Proje silindi");
+      toast.success(t("projects.deleted"));
       setProjects((prev) => prev.filter((p) => p.id !== pendingDelete.id));
     } catch (e: any) {
-      toast.error("Silme hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setDeleting(false);
       setPendingDelete(null);
@@ -167,9 +169,7 @@ export function ProjectsView() {
     setDuplicatingId(project.id);
     try {
       const copy = await duplicateProject(project.id);
-      toast.success("Proje kopyalandı", {
-        description: "Yeni taslak oluşturuldu.",
-      });
+      toast.success(t("projects.duplicated"));
       // Refresh list
       const fresh = await listProjects();
       setProjects(fresh);
@@ -177,7 +177,7 @@ export function ProjectsView() {
         go("detail", copy.id);
       }
     } catch (e: any) {
-      toast.error("Kopyalama hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setDuplicatingId(null);
     }
@@ -221,12 +221,10 @@ export function ProjectsView() {
       }
       const fresh = await listProjects();
       setProjects(fresh);
-      toast.success(`${ids.length} proje kopyalandı`, {
-        description: "Yeni taslaklar oluşturuldu.",
-      });
+      toast.success(t("projects.duplicated.many", { count: ids.length }));
       exitSelectMode();
     } catch (e: any) {
-      toast.error("Toplu kopyalama hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setBulkBusy(null);
     }
@@ -242,10 +240,10 @@ export function ProjectsView() {
       }
       const fresh = await listProjects();
       setProjects(fresh);
-      toast.success(`${ids.length} proje silindi`);
+      toast.success(t("projects.deleted"));
       exitSelectMode();
     } catch (e: any) {
-      toast.error("Toplu silme hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setBulkBusy(null);
       setBulkDeleteOpen(false);
@@ -262,9 +260,7 @@ export function ProjectsView() {
       );
       const clean = data.filter(Boolean);
       if (clean.length === 0) {
-        toast.error("Dışa aktarım başarısız", {
-          description: "Seçili projeler yüklenemedi.",
-        });
+        toast.error(t("common.error"));
         return;
       }
       const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
@@ -273,10 +269,10 @@ export function ProjectsView() {
         JSON.stringify(clean, null, 2),
         "application/json"
       );
-      toast.success(`${clean.length} proje dışa aktarıldı`);
+      toast.success(t("projects.exported", { count: clean.length }));
       exitSelectMode();
     } catch (e: any) {
-      toast.error("Dışa aktarım hatası", { description: e?.message });
+      toast.error(t("common.error"), { description: e?.message });
     } finally {
       setBulkBusy(null);
     }
@@ -290,13 +286,13 @@ export function ProjectsView() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
-              Kütüphanen
+              {t("common.all")}
             </p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-balance">
-              Projelerim
+              {t("projects.title")}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Oluşturduğun tüm videolar burada.
+              {t("projects.subtitle")}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -312,12 +308,12 @@ export function ProjectsView() {
               {selectMode ? (
                 <>
                   <X className="size-4" />
-                  Seçimden Çık
+                  {t("projects.bulk.exit")}
                 </>
               ) : (
                 <>
                   <CheckSquare className="size-4" />
-                  Toplu Seç
+                  {t("projects.bulk.select")}
                 </>
               )}
             </Button>
@@ -329,7 +325,7 @@ export function ProjectsView() {
               className="btn-gradient shine-on-hover shadow-lg shadow-fuchsia-500/30 min-h-[44px] relative overflow-hidden"
             >
               <Wand2 className="size-4" />
-              Yeni Video
+              {t("projects.new")}
             </Button>
           </div>
         </div>
@@ -344,7 +340,7 @@ export function ProjectsView() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Başlık veya konu ara..."
+            placeholder={t("projects.search")}
             className="pl-9"
           />
         </div>
@@ -360,8 +356,8 @@ export function ProjectsView() {
                 <Square className="size-4 text-muted-foreground" />
               )}
               {selectedIds.size === filtered.length
-                ? "Seçimi Temizle"
-                : "Tümünü Seç"}
+                ? t("common.clearSelection")
+                : t("common.selectAll")}
             </button>
           )}
           <div className="flex items-center gap-1.5">
@@ -371,10 +367,10 @@ export function ProjectsView() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">En yeni</SelectItem>
-                <SelectItem value="oldest">En eski</SelectItem>
-                <SelectItem value="duration">Süreye göre</SelectItem>
-                <SelectItem value="title">Başlığa göre</SelectItem>
+                <SelectItem value="newest">{t("projects.sort.newest")}</SelectItem>
+                <SelectItem value="oldest">{t("projects.sort.oldest")}</SelectItem>
+                <SelectItem value="duration">{t("projects.sort.duration")}</SelectItem>
+                <SelectItem value="title">{t("projects.sort.title")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -387,7 +383,7 @@ export function ProjectsView() {
                   ? "bg-fuchsia-500/15 text-fuchsia-500"
                   : "text-muted-foreground hover:bg-accent"
               )}
-              aria-label="Izgara görünüm"
+              aria-label={t("projects.view.grid")}
             >
               <LayoutGrid className="size-4" />
             </button>
@@ -399,7 +395,7 @@ export function ProjectsView() {
                   ? "bg-fuchsia-500/15 text-fuchsia-500"
                   : "text-muted-foreground hover:bg-accent"
               )}
-              aria-label="Liste görünüm"
+              aria-label={t("projects.view.list")}
             >
               <ListIcon className="size-4" />
             </button>
@@ -412,16 +408,16 @@ export function ProjectsView() {
           <Filter className="size-4 text-muted-foreground shrink-0" />
           <TabsList className="bg-muted/50">
             <TabsTrigger value="all" className="min-h-[36px]">
-              Tümü <CountBadge n={counts.all} />
+              {t("projects.tab.all")} <CountBadge n={counts.all} />
             </TabsTrigger>
             <TabsTrigger value="ready" className="min-h-[36px]">
-              Hazır <CountBadge n={counts.ready} />
+              {t("projects.tab.ready")} <CountBadge n={counts.ready} />
             </TabsTrigger>
             <TabsTrigger value="generating" className="min-h-[36px]">
-              Üretiliyor <CountBadge n={counts.generating} />
+              {t("projects.tab.generating")} <CountBadge n={counts.generating} />
             </TabsTrigger>
             <TabsTrigger value="draft" className="min-h-[36px]">
-              Taslak <CountBadge n={counts.draft} />
+              {t("projects.tab.draft")} <CountBadge n={counts.draft} />
             </TabsTrigger>
           </TabsList>
         </div>
@@ -453,12 +449,10 @@ export function ProjectsView() {
                 </div>
                 <div className="relative">
                   <p className="font-semibold text-lg">
-                    {search ? "Sonuç bulunamadı" : "Burada henüz proje yok"}
+                    {t("projects.empty.title")}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                    {search
-                      ? "Aramanı değiştir ya da yeni bir video üret."
-                      : "Filtreyi değiştir ya da yeni bir video üret."}
+                    {t("projects.empty.subtitle")}
                   </p>
                 </div>
                 <Button
@@ -469,7 +463,7 @@ export function ProjectsView() {
                   className="relative btn-gradient shine-on-hover border-0 min-h-[44px]"
                 >
                   <Wand2 className="size-4" />
-                  Yeni Video
+                  {t("projects.empty.cta")}
                 </Button>
               </CardContent>
             </Card>
@@ -519,16 +513,16 @@ export function ProjectsView() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Projeyi sil?</AlertDialogTitle>
+            <AlertDialogTitle>{t("projects.delete.title")}</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="font-medium text-foreground">
                 “{pendingDelete?.title}”
               </span>{" "}
-              kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              {t("projects.delete.desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>İptal</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -542,7 +536,7 @@ export function ProjectsView() {
               ) : (
                 <Trash2 className="size-4" />
               )}
-              Sil
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -556,15 +550,15 @@ export function ProjectsView() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {selectedIds.size} proje silinsin mi?
+              {t("projects.delete.all.title", { count: selectedIds.size })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Seçili projeler kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              {t("projects.delete.all.desc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={bulkBusy === "delete"}>
-              İptal
+              {t("common.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
@@ -579,7 +573,7 @@ export function ProjectsView() {
               ) : (
                 <Trash2 className="size-4" />
               )}
-              Hepsini Sil
+              {t("projects.delete.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -612,7 +606,7 @@ export function ProjectsView() {
                 <span className="accent-text font-semibold tabular-nums">
                   {selectedIds.size}
                 </span>
-                <span className="text-muted-foreground">seçili</span>
+                <span className="text-muted-foreground">{t("common.selected", { count: selectedIds.size })}</span>
               </span>
               <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
               <Button
@@ -626,10 +620,10 @@ export function ProjectsView() {
                   }
                 }}
                 className="min-h-[36px]"
-                title="İlk seçili projeyi aç"
+                title={t("common.open")}
               >
                 <Play className="size-4" />
-                Aç
+                {t("common.open")}
               </Button>
               <Button
                 size="sm"
@@ -643,7 +637,7 @@ export function ProjectsView() {
                 ) : (
                   <Copy className="size-4" />
                 )}
-                Kopyala
+                {t("projects.bulk.duplicate")}
               </Button>
               <Button
                 size="sm"
@@ -657,7 +651,7 @@ export function ProjectsView() {
                 ) : (
                   <Download className="size-4" />
                 )}
-                Dışa Aktar
+                {t("projects.bulk.export")}
               </Button>
               <Button
                 size="sm"
@@ -667,7 +661,7 @@ export function ProjectsView() {
                 className="min-h-[36px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
               >
                 <Trash2 className="size-4" />
-                Sil
+                {t("common.delete")}
               </Button>
               <div className="w-px h-6 bg-border/60 mx-0.5" aria-hidden />
               <Button
@@ -675,10 +669,10 @@ export function ProjectsView() {
                 variant="ghost"
                 onClick={exitSelectMode}
                 className="min-h-[36px] text-muted-foreground"
-                aria-label="İptal"
+                aria-label={t("common.cancel")}
               >
                 <X className="size-4" />
-                İptal
+                {t("common.cancel")}
               </Button>
             </div>
           </motion.div>
@@ -737,6 +731,7 @@ function SelectCheckbox({
   onToggle: () => void;
   className?: string;
 }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
@@ -745,7 +740,7 @@ function SelectCheckbox({
         e.preventDefault();
         onToggle();
       }}
-      aria-label={checked ? "Seçimi kaldır" : "Seç"}
+      aria-label={checked ? t("common.deselect") : t("common.select")}
       className={cn(
         "grid place-items-center size-6 rounded-md border-2 transition-all",
         checked
@@ -782,6 +777,7 @@ function ProjectCard({
   selected: boolean;
   onToggleSelect: () => void;
 }) {
+  const { t } = useLocale();
   const modeInfo = MODE_MAP[project.mode];
   const langInfo = LANGUAGE_MAP[project.language];
   const status = STATUS_META[project.status];
@@ -855,7 +851,7 @@ function ProjectCard({
                 )}
               >
                 <span className={cn("size-1.5 rounded-full", status.dot)} />
-                {status.label}
+                {t(status.labelKey)}
               </Badge>
             </div>
 
@@ -868,7 +864,7 @@ function ProjectCard({
             <div className="absolute bottom-0 inset-x-0 p-3">
               <div className="flex items-center gap-2 mb-1">
                 <Badge variant="outline" className="bg-white/10 border-white/20 text-white">
-                  {modeInfo?.emoji} {modeInfo?.label}
+                  {modeInfo?.emoji} {t(`mode.${project.mode}.label`)}
                 </Badge>
                 {langInfo && (
                   <span className="text-xs" title={langInfo.nativeName}>
@@ -885,7 +881,7 @@ function ProjectCard({
 
         <CardContent className="flex items-center justify-between py-3 gap-2">
           <div className="text-xs text-muted-foreground">
-            {timeAgo(project.createdAt)} · {project.sceneCount} sahne
+            {timeAgo(project.createdAt)} · {t("create.content.scenes.count", { count: project.sceneCount })}
           </div>
           {!selectMode && (
             <div className="flex items-center gap-1">
@@ -895,15 +891,15 @@ function ProjectCard({
                 onClick={onOpen}
                 className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
               >
-                Aç
+                {t("common.open")}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={onShare}
                 className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-                aria-label="Paylaş"
-                title="Paylaş"
+                aria-label={t("detail.share")}
+                title={t("detail.share")}
               >
                 <Share2 className="size-4" />
               </Button>
@@ -913,8 +909,8 @@ function ProjectCard({
                 onClick={onDuplicate}
                 disabled={duplicating}
                 className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-                aria-label="Kopyala"
-                title="Kopyala"
+                aria-label={t("common.copy")}
+                title={t("common.copy")}
               >
                 {duplicating ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -927,7 +923,7 @@ function ProjectCard({
                 variant="ghost"
                 onClick={onDelete}
                 className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                aria-label="Sil"
+                aria-label={t("common.delete")}
               >
                 <Trash2 className="size-4" />
               </Button>
@@ -962,6 +958,7 @@ function ProjectRow({
   selected: boolean;
   onToggleSelect: () => void;
 }) {
+  const { t } = useLocale();
   const modeInfo = MODE_MAP[project.mode];
   const langInfo = LANGUAGE_MAP[project.language];
   const status = STATUS_META[project.status];
@@ -1004,7 +1001,7 @@ function ProjectRow({
               }
             }}
             className="relative shrink-0 size-20 rounded-lg overflow-hidden bg-muted group/thumb"
-            aria-label="Aç"
+            aria-label={t("common.open")}
             tabIndex={selectMode ? -1 : 0}
           >
             <ProjectThumbnail
@@ -1037,10 +1034,10 @@ function ProjectRow({
                 )}
               >
                 <span className={cn("size-1.5 rounded-full", status.dot)} />
-                {status.label}
+                {t(status.labelKey)}
               </Badge>
               <Badge variant="outline" className="text-[10px]">
-                {modeInfo?.emoji} {modeInfo?.label}
+                {modeInfo?.emoji} {t(`mode.${project.mode}.label`)}
               </Badge>
               {langInfo && (
                 <span className="text-xs" title={langInfo.nativeName}>
@@ -1052,7 +1049,7 @@ function ProjectRow({
               {project.title}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {timeAgo(project.createdAt)} · {project.sceneCount} sahne · {formatDuration(project.durationSec)}
+              {timeAgo(project.createdAt)} · {t("create.content.scenes.count", { count: project.sceneCount })} · {formatDuration(project.durationSec)}
             </p>
           </button>
           {!selectMode && (
@@ -1063,15 +1060,15 @@ function ProjectRow({
                 onClick={onOpen}
                 className="h-8 px-2 text-fuchsia-500 hover:text-fuchsia-400 hover:bg-fuchsia-500/10"
               >
-                Aç
+                {t("common.open")}
               </Button>
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={onShare}
                 className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-                aria-label="Paylaş"
-                title="Paylaş"
+                aria-label={t("detail.share")}
+                title={t("detail.share")}
               >
                 <Share2 className="size-4" />
               </Button>
@@ -1081,8 +1078,8 @@ function ProjectRow({
                 onClick={onDuplicate}
                 disabled={duplicating}
                 className="size-8 text-muted-foreground hover:text-fuchsia-500 hover:bg-fuchsia-500/10"
-                aria-label="Kopyala"
-                title="Kopyala"
+                aria-label={t("common.copy")}
+                title={t("common.copy")}
               >
                 {duplicating ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -1095,7 +1092,7 @@ function ProjectRow({
                 variant="ghost"
                 onClick={onDelete}
                 className="size-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
-                aria-label="Sil"
+                aria-label={t("common.delete")}
               >
                 <Trash2 className="size-4" />
               </Button>

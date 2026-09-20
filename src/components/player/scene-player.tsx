@@ -18,6 +18,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import type { VideoProject } from "@/lib/types";
 import { STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
+import { useLocale } from "@/lib/use-locale";
 import { cn } from "@/lib/utils";
 import { SceneRenderer } from "./scene-renderer";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ function formatTime(ms: number): string {
 }
 
 export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) => {
+  const { t } = useLocale();
   const scenes = project.scenes ?? [];
   const totalMs = scenes.reduce((a, s) => a + (s.durationMs || 0), 0) || project.durationSec * 1000;
 
@@ -319,7 +321,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
   if (!scenes.length) {
     return (
       <div className="rounded-2xl border border-border bg-card p-8 text-center text-muted-foreground">
-        Bu projede sahne bulunmuyor.
+        {t("player.noScenes")}
       </div>
     );
   }
@@ -369,7 +371,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               exit={{ opacity: 0, scale: 0.9 }}
               onClick={handleTogglePlay}
               className="absolute inset-0 grid place-items-center"
-              aria-label="Oynat"
+              aria-label={t("player.play")}
             >
               <div className="size-20 rounded-full bg-white/10 backdrop-blur-md border border-white/30 grid place-items-center shadow-2xl hover:scale-105 transition-transform">
                 <Play className="size-8 text-white fill-white translate-x-0.5" />
@@ -384,7 +386,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
         {/* Scene index pill (top-left) */}
         <div className="absolute top-3 left-3 flex items-center gap-2">
           <span className="rounded-full bg-black/60 backdrop-blur-sm px-2.5 py-1 text-xs font-medium text-white">
-            Sahne {currentSceneIndex + 1} / {scenes.length}
+            {t("player.scene")} {currentSceneIndex + 1} / {scenes.length}
           </span>
           {langInfo && (
             <span className="rounded-full bg-black/60 backdrop-blur-sm px-2 py-1 text-xs text-white flex items-center gap-1">
@@ -394,7 +396,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
           )}
           {loop && (
             <span className="rounded-full bg-fuchsia-500/30 backdrop-blur-sm px-2 py-1 text-xs text-fuchsia-200 flex items-center gap-1 border border-fuchsia-500/40">
-              <Repeat1 className="size-3" /> Döngü
+              <Repeat1 className="size-3" /> {t("player.loop")}
             </span>
           )}
           {playbackRate !== 1 && (
@@ -418,7 +420,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               value={totalElapsedMs}
               onChange={(e) => handleSeek(Number(e.target.value))}
               className="absolute inset-0 w-full opacity-0 cursor-pointer"
-              aria-label="Konum"
+              aria-label={t("player.seek")}
             />
             <div className="pointer-events-none absolute inset-y-0 left-0 right-0 my-auto h-1.5 w-full rounded-full bg-white/20 overflow-hidden">
               <div
@@ -440,7 +442,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               size="icon"
               className="size-9 rounded-full text-white hover:bg-white/15 hover:text-white"
               onClick={() => seekByDelta(-3000)}
-              aria-label="3 saniye geri"
+              aria-label={t("player.skipBack")}
             >
               <SkipBack className="size-4" />
             </Button>
@@ -449,7 +451,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               size="icon"
               className="size-10 rounded-full text-white bg-white/10 hover:bg-white/20 hover:text-white"
               onClick={handleTogglePlay}
-              aria-label={isPlaying ? "Duraklat" : "Oynat"}
+              aria-label={isPlaying ? t("player.pause") : t("player.play")}
             >
               {isPlaying ? (
                 <Pause className="size-5" />
@@ -462,7 +464,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
               size="icon"
               className="size-9 rounded-full text-white hover:bg-white/15 hover:text-white"
               onClick={() => seekByDelta(3000)}
-              aria-label="3 saniye ileri"
+              aria-label={t("player.skipForward")}
             >
               <SkipForward className="size-4" />
             </Button>
@@ -474,7 +476,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                 size="icon"
                 className="size-9 rounded-full text-white hover:bg-white/15 hover:text-white"
                 onClick={() => setIsMuted((m) => !m)}
-                aria-label={isMuted ? "Sesi aç" : "Sesi kapat"}
+                aria-label={isMuted ? t("player.unmute") : t("player.mute")}
               >
                 {isMuted || volume === 0 ? (
                   <VolumeX className="size-4" />
@@ -494,7 +496,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                   setIsMuted(v === 0);
                 }}
                 className="w-0 group-hover/vol:w-20 transition-all duration-300 accent-fuchsia-500"
-                aria-label="Ses seviyesi"
+                aria-label={t("player.volume")}
               />
             </div>
 
@@ -514,15 +516,15 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                       "h-9 rounded-full px-2.5 text-xs font-medium text-white hover:bg-white/15 hover:text-white gap-1",
                       playbackRate !== 1 && "bg-white/20"
                     )}
-                    aria-label="Oynatma hızı"
-                    title="Oynatma hızı"
+                    aria-label={t("player.speed")}
+                    title={t("player.speed")}
                   >
                     <Gauge className="size-4" />
-                    {playbackRate !== 1 ? `${playbackRate}x` : "Hız"}
+                    {playbackRate !== 1 ? `${playbackRate}x` : t("player.speed")}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-28">
-                  <DropdownMenuLabel>Oynatma Hızı</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t("player.speed")}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {SPEEDS.map((s) => (
                     <DropdownMenuItem
@@ -533,7 +535,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                         s === playbackRate && "bg-accent"
                       )}
                     >
-                      <span>{s === 1 ? "Normal (1x)" : `${s}x`}</span>
+                      <span>{s === 1 ? t("player.speed.normal") : `${s}x`}</span>
                       {s === playbackRate && <span className="text-fuchsia-500">✓</span>}
                     </DropdownMenuItem>
                   ))}
@@ -549,8 +551,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                   loop && "bg-white/20 text-fuchsia-300"
                 )}
                 onClick={() => setLoop((l) => !l)}
-                aria-label={loop ? "Tekrarı kapat" : "Tekrarı aç"}
-                title="Tekrar (R)"
+                aria-label={loop ? t("player.loopOff") : t("player.loopOn")}
+                title={`${t("player.loop")} (R)`}
               >
                 {loop ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />}
               </Button>
@@ -563,8 +565,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                   showSubtitles ? "bg-white/15" : ""
                 )}
                 onClick={() => setShowSubtitles((s) => !s)}
-                aria-label="Altyazılar"
-                title="Altyazılar (C)"
+                aria-label={t("player.captions")}
+                title={`${t("player.captions")} (C)`}
               >
                 {showSubtitles ? (
                   <Captions className="size-4" />
@@ -577,8 +579,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                 size="icon"
                 className="size-9 rounded-full text-white hover:bg-white/15 hover:text-white"
                 onClick={handleFullscreen}
-                aria-label="Tam ekran"
-                title="Tam ekran (F)"
+                aria-label={isFullscreen ? t("player.exitFullscreen") : t("player.fullscreen")}
+                title={`${t("player.fullscreen")} (F)`}
               >
                 <Maximize2 className="size-4" />
               </Button>
@@ -601,7 +603,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
         {/* No audio note */}
         {!project.audioUrl && (
           <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur-sm">
-            Görsel önizleme · seslendirme yok
+            {t("player.noAudio")}
           </div>
         )}
       </div>
@@ -625,7 +627,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
                 : "border-border hover:border-muted-foreground"
             )}
             style={{ width: 96, height: 54 }}
-            aria-label={`${i + 1}. sahneye git`}
+            aria-label={t("player.scene.goto", { n: i + 1 })}
           >
             <div
               className={cn(
@@ -648,6 +650,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({ project, className }) 
 
 // Keyboard shortcuts hint that fades in/out on the player
 function KeyboardHint() {
+  const { t } = useLocale();
   const [visible, setVisible] = React.useState(false);
   const [dismissed, setDismissed] = React.useState(false);
 
@@ -664,15 +667,15 @@ function KeyboardHint() {
   if (dismissed) return null;
 
   const shortcuts: [string, string][] = [
-    ["Space", "Oynat / Duraklat"],
-    ["← / →", "3 sn geri / ileri"],
-    ["J / L", "10 sn geri / ileri"],
-    ["M", "Sesi kapat"],
-    ["F", "Tam ekran"],
-    ["C", "Altyazı"],
-    ["R", "Tekrar"],
-    [", / .", "Hız ↓ / ↑"],
-    ["0-9", "%10'a atla"],
+    ["Space", t("player.kbd.play")],
+    ["← / →", t("player.kbd.seek")],
+    ["J / L", t("player.kbd.seek10")],
+    ["M", t("player.kbd.mute")],
+    ["F", t("player.kbd.fullscreen")],
+    ["C", t("player.kbd.captions")],
+    ["R", t("player.kbd.loop")],
+    [", / .", t("player.kbd.speed")],
+    ["0-9", t("player.kbd.jump")],
   ];
 
   return (
@@ -688,12 +691,12 @@ function KeyboardHint() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-white flex items-center gap-1.5">
               <span className="size-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
-              Klavye Kısayolları
+              {t("player.kbd.title")}
             </span>
             <button
               onClick={() => setDismissed(true)}
               className="text-white/60 hover:text-white text-xs"
-              aria-label="Kapat"
+              aria-label={t("common.close")}
             >
               ✕
             </button>

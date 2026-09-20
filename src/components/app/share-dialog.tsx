@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { VideoProject } from "@/lib/types";
+import { useLocale } from "@/lib/use-locale";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,7 @@ function buildEmbedCode(projectId: string): string {
 
 interface SocialButton {
   id: string;
+  labelKey?: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string; // emoji/letter badge fallback when no lucide icon
@@ -78,6 +80,7 @@ interface SocialButton {
 const SOCIALS: SocialButton[] = [
   {
     id: "whatsapp",
+    labelKey: "share.whatsapp",
     label: "WhatsApp",
     icon: MessageCircle,
     accent: "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25",
@@ -85,6 +88,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "twitter",
+    labelKey: "share.twitter",
     label: "X / Twitter",
     badge: "𝕏",
     accent: "bg-zinc-500/15 text-zinc-200 hover:bg-zinc-500/25",
@@ -93,6 +97,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "facebook",
+    labelKey: "share.facebook",
     label: "Facebook",
     badge: "f",
     accent: "bg-sky-500/15 text-sky-300 hover:bg-sky-500/25",
@@ -101,6 +106,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "telegram",
+    labelKey: "share.telegram",
     label: "Telegram",
     icon: Send,
     accent: "bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25",
@@ -109,6 +115,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "linkedin",
+    labelKey: "share.linkedin",
     label: "LinkedIn",
     badge: "in",
     accent: "bg-violet-500/15 text-violet-300 hover:bg-violet-500/25",
@@ -117,6 +124,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "reddit",
+    labelKey: "share.reddit",
     label: "Reddit",
     badge: "R",
     accent: "bg-orange-500/15 text-orange-300 hover:bg-orange-500/25",
@@ -125,6 +133,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "email",
+    labelKey: "share.email",
     label: "E-posta",
     icon: Mail,
     accent: "bg-rose-500/15 text-rose-300 hover:bg-rose-500/25",
@@ -133,6 +142,7 @@ const SOCIALS: SocialButton[] = [
   },
   {
     id: "copy",
+    labelKey: "share.copyLink",
     label: "Linki Kopyala",
     icon: Link2,
     accent: "bg-fuchsia-500/15 text-fuchsia-300 hover:bg-fuchsia-500/25",
@@ -141,10 +151,11 @@ const SOCIALS: SocialButton[] = [
 ];
 
 export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
+  const { t } = useLocale();
   const shareUrl = React.useMemo(() => buildShareUrl(project.id), [project.id]);
   const shareText = React.useMemo(
-    () => `${project.title} — Hyperframe Studio ile üretildi`,
-    [project.title]
+    () => `${project.title} — ${t("app.name")}`,
+    [project.title, t]
   );
   const embedCode = React.useMemo(
     () => buildEmbedCode(project.id),
@@ -156,18 +167,18 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
     [shareUrl]
   );
 
-  const copy = async (text: string, msg = "Kopyalandı") => {
+  const copy = async (text: string, msg?: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success(msg);
+      toast.success(msg ?? t("share.copied"));
     } catch {
-      toast.error("Kopyalama başarısız oldu");
+      toast.error(t("common.error"));
     }
   };
 
   const openSocial = (s: SocialButton) => {
     if (s.id === "copy") {
-      void copy(shareUrl, "Paylaşım linki kopyalandı");
+      void copy(shareUrl, t("share.copied"));
       return;
     }
     const url = s.url(shareText, shareUrl);
@@ -188,7 +199,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success("QR kodu indirildi");
+      toast.success(t("share.qr.download"));
     } catch {
       // Fallback: open in new tab
       window.open(qrSrc, "_blank", "noopener,noreferrer");
@@ -197,29 +208,29 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
 
   const downloadThumbnail = () => {
     if (!project.thumbnailUrl) {
-      toast.error("Önizleme görseli bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
-    downloadRemoteFile(project.thumbnailUrl, `${slug(project.title)}-kapak.png`);
-    toast.success("Önizleme görseli indirildi");
+    downloadRemoteFile(project.thumbnailUrl, `${slug(project.title)}-thumb.png`);
+    toast.success(t("share.downloadThumb"));
   };
 
   const downloadSrt = () => {
     if (!project.subtitles) {
-      toast.error("Altyazı bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
     downloadTextFile(`${slug(project.title)}.srt`, project.subtitles, "text/plain");
-    toast.success("SRT indirildi");
+    toast.success(t("detail.download.srt"));
   };
 
   const downloadAudio = () => {
     if (!project.audioUrl) {
-      toast.error("Ses dosyası bulunamadı");
+      toast.error(t("common.error"));
       return;
     }
     downloadRemoteFile(project.audioUrl, `${slug(project.title)}.mp3`);
-    toast.success("Ses indirildi");
+    toast.success(t("detail.download.audio"));
   };
 
   return (
@@ -239,11 +250,10 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
               <span className="grid size-7 place-items-center rounded-lg btn-gradient shadow-md shadow-fuchsia-500/30">
                 <Share2 className="size-4" />
               </span>
-              Videoyu Paylaş
+              {t("share.title")}
             </DialogTitle>
             <DialogDescription className="text-sm">
-              <span className="font-medium text-foreground">{project.title}</span>{" "}
-              için paylaşım linki, gömme kodu, QR ve sosyal medya kısayolları.
+              {t("share.subtitle", { title: project.title })}
             </DialogDescription>
           </DialogHeader>
         </motion.div>
@@ -251,7 +261,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
         <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto scrollbar-thin">
           {/* Shareable link */}
           <section className="space-y-2">
-            <Label>Paylaşım Linki</Label>
+            <Label>{t("share.link")}</Label>
             <div className="flex gap-2">
               <Input
                 readOnly
@@ -262,11 +272,11 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => copy(shareUrl, "Paylaşım linki kopyalandı")}
+                onClick={() => copy(shareUrl, t("share.copied"))}
                 className="shrink-0 border-fuchsia-500/40 text-fuchsia-500 hover:bg-fuchsia-500/10 min-h-[40px]"
               >
                 <Copy className="size-3.5" />
-                Kopyala
+                {t("common.copy")}
               </Button>
             </div>
           </section>
@@ -275,7 +285,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
           <section className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <CodeIcon className="size-3.5 text-muted-foreground" />
-              Gömme Kodu (Embed)
+              {t("share.embed")}
             </Label>
             <Textarea
               readOnly
@@ -286,11 +296,11 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => copy(embedCode, "Gömme kodu kopyalandı")}
+              onClick={() => copy(embedCode, t("share.copied"))}
               className="w-full border-violet-500/40 text-violet-500 hover:bg-violet-500/10 min-h-[40px]"
             >
               <Copy className="size-3.5" />
-              Kodu Kopyala
+              {t("share.copyCode")}
             </Button>
           </section>
 
@@ -298,13 +308,13 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
           <section className="space-y-2">
             <Label className="flex items-center gap-1.5">
               <QrCode className="size-3.5 text-muted-foreground" />
-              QR Kodu
+              {t("share.qr")}
             </Label>
             <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-muted/30 p-4">
               <div className="relative size-[200px] rounded-xl bg-white p-2 shadow-md grid place-items-center">
                 <img
                   src={qrSrc}
-                  alt={`${project.title} için QR kodu`}
+                  alt={t("share.qr.alt", { title: project.title })}
                   className="size-full object-contain"
                   width={200}
                   height={200}
@@ -317,17 +327,18 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                 className="border-fuchsia-500/40 text-fuchsia-500 hover:bg-fuchsia-500/10 min-h-[36px]"
               >
                 <Download className="size-3.5" />
-                QR İndir
+                {t("share.qr.download")}
               </Button>
             </div>
           </section>
 
           {/* Social share grid */}
           <section className="space-y-2">
-            <Label>Sosyal Medyada Paylaş</Label>
+            <Label>{t("share.social")}</Label>
             <div className="grid grid-cols-4 gap-2">
               {SOCIALS.map((s, i) => {
                 const Icon = s.icon;
+                const label = s.labelKey ? t(s.labelKey) : s.label;
                 return (
                   <motion.button
                     key={s.id}
@@ -341,7 +352,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                       "group flex flex-col items-center gap-1.5 rounded-xl border border-border p-2.5 transition-colors",
                       s.accent
                     )}
-                    aria-label={s.label}
+                    aria-label={label}
                   >
                     <span className="grid size-9 place-items-center rounded-lg bg-background/60 backdrop-blur-sm">
                       {Icon ? (
@@ -351,7 +362,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                       )}
                     </span>
                     <span className="text-[10px] font-medium leading-tight text-center">
-                      {s.label}
+                      {label}
                     </span>
                   </motion.button>
                 );
@@ -361,7 +372,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
 
           {/* Direct download shortcuts */}
           <section className="space-y-2">
-            <Label>Hızlı İndirme</Label>
+            <Label>{t("share.quickDownloads")}</Label>
             <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
               {/* Thumbnail row */}
               <div className="flex items-center gap-3">
@@ -379,9 +390,9 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">Kapak görseli</p>
+                  <p className="text-xs font-medium truncate">{t("share.downloadThumb")}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {project.thumbnailUrl ? "PNG · doğrudan indirme" : "Mevcut değil"}
+                    {project.thumbnailUrl ? "PNG" : t("common.error")}
                   </p>
                 </div>
                 <Button
@@ -392,7 +403,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                   className="shrink-0 text-fuchsia-500 hover:bg-fuchsia-500/10 h-8 px-2"
                 >
                   <Download className="size-3.5" />
-                  İndir
+                  {t("common.copy")}
                 </Button>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -404,7 +415,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                   className="h-9 border-border text-muted-foreground hover:text-foreground"
                 >
                   <FileText className="size-3.5" />
-                  SRT İndir
+                  {t("detail.download.srt")}
                 </Button>
                 <Button
                   size="sm"
@@ -414,7 +425,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
                   className="h-9 border-border text-muted-foreground hover:text-foreground"
                 >
                   <AudioLines className="size-3.5" />
-                  Sesi İndir
+                  {t("detail.download.audio")}
                 </Button>
               </div>
             </div>
@@ -422,7 +433,7 @@ export function ShareDialog({ project, open, onOpenChange }: ShareDialogProps) {
 
           <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
             <Sparkles className="size-3 text-fuchsia-500" />
-            Linki paylaşan kişi, videoyu animasyonlu oynatıcıda izleyebilir.
+            {t("share.subtitle", { title: project.title })}
           </p>
         </div>
       </DialogContent>

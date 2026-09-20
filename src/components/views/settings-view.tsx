@@ -16,6 +16,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useLocale } from "@/lib/use-locale";
 import {
   LLM_PROVIDERS,
   TTS_PROVIDERS,
@@ -69,6 +70,7 @@ const DEFAULT_LOCAL: LocalDefaults = {
 };
 
 export function SettingsView() {
+  const { t } = useLocale();
   const [settings, setSettings] = React.useState<ProviderSettings>({});
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -77,7 +79,7 @@ export function SettingsView() {
   React.useEffect(() => {
     getSettings()
       .then((s) => setSettings(s))
-      .catch((e: ApiError) => toast.error("Ayarlar yüklenemedi", { description: e.message }))
+      .catch((e: ApiError) => toast.error(e.message))
       .finally(() => setLoading(false));
 
     try {
@@ -109,9 +111,9 @@ export function SettingsView() {
       }
       const saved = await saveSettings(settings);
       setSettings(saved);
-      toast.success("Ayarlar kaydedildi");
+      toast.success(t("settings.saved"));
     } catch (e: any) {
-      toast.error("Kayıt hatası", { description: e?.message });
+      toast.error(e?.message ?? "Error");
     } finally {
       setSaving(false);
     }
@@ -133,13 +135,13 @@ export function SettingsView() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold">
-            Yapılandırma
+            {t("settings.subtitle")}
           </p>
           <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight">
-            Ayarlar
+            {t("settings.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            AI sağlayıcılarını ve varsayılan tercihleri yönetin.
+            {t("settings.subtitle")}
           </p>
         </div>
         <Button
@@ -152,7 +154,7 @@ export function SettingsView() {
           ) : (
             <Save className="size-4" />
           )}
-          Kaydet
+          {t("settings.save")}
         </Button>
       </header>
 
@@ -165,17 +167,16 @@ export function SettingsView() {
               <Palette className="size-4" />
             </span>
             <div>
-              <CardTitle className="text-base">Görünüm</CardTitle>
+              <CardTitle className="text-base">{t("settings.appearance")}</CardTitle>
               <CardDescription>
-                Tema rengi tüm vurgulara uygulanır. Aydınlık/koyu modu ayrıca
-                değiştir.
+                {t("settings.accent.note")}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label>Tema Rengi</Label>
+            <Label>{t("settings.accent")}</Label>
             <AccentPickerInline />
           </div>
           <DarkLightToggle />
@@ -185,14 +186,14 @@ export function SettingsView() {
       {/* Local defaults */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Genel</CardTitle>
+          <CardTitle className="text-base">{t("settings.title")}</CardTitle>
           <CardDescription>
-            Yeni videolar için varsayılan tercihler (tarayıcında saklanır).
+            {t("settings.language.note")}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>Varsayılan dil</Label>
+            <Label>{t("create.config.language")}</Label>
             <Select
               value={local.language}
               onValueChange={(v) => setLocal((l) => ({ ...l, language: v }))}
@@ -210,7 +211,7 @@ export function SettingsView() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Varsayılan ton</Label>
+            <Label>{t("create.config.tone")}</Label>
             <Select
               value={local.tone}
               onValueChange={(v) => setLocal((l) => ({ ...l, tone: v as Tone }))}
@@ -219,16 +220,16 @@ export function SettingsView() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TONES.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.emoji} {t.label}
+                {TONES.map((tn) => (
+                  <SelectItem key={tn.id} value={tn.id}>
+                    {tn.emoji} {t(`tone.${tn.id}.label`)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Varsayılan stil</Label>
+            <Label>{t("create.config.style")}</Label>
             <Select
               value={local.style}
               onValueChange={(v) => setLocal((l) => ({ ...l, style: v as VideoStyle }))}
@@ -251,7 +252,7 @@ export function SettingsView() {
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <Cpu className="size-5 text-violet-500" />
-          <h2 className="text-lg font-semibold tracking-tight">LLM Sağlayıcıları</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{t("settings.llm")}</h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {LLM_PROVIDERS.map((p) => (
@@ -275,7 +276,7 @@ export function SettingsView() {
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <AudioLines className="size-5 text-fuchsia-500" />
-          <h2 className="text-lg font-semibold tracking-tight">TTS Sağlayıcıları</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{t("settings.tts")}</h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {TTS_PROVIDERS.map((p) => (
@@ -312,12 +313,13 @@ interface ProviderCardProps {
 // In-page dark/light toggle for the Appearance section
 function DarkLightToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const { t } = useLocale();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const isDark = mounted ? (resolvedTheme ?? theme) === "dark" : true;
   return (
     <div className="space-y-2">
-      <Label>Aydınlık/Koyu Mod</Label>
+      <Label>{t("settings.themeMode")}</Label>
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -331,7 +333,7 @@ function DarkLightToggle() {
           )}
         >
           <Sun className="size-4" />
-          Aydınlık
+          Light
         </Button>
         <Button
           type="button"
@@ -345,7 +347,7 @@ function DarkLightToggle() {
           )}
         >
           <Moon className="size-4" />
-          Koyu
+          Dark
         </Button>
       </div>
     </div>
@@ -376,6 +378,7 @@ function ProviderCard({
   settings,
   onChange,
 }: ProviderCardProps) {
+  const { t } = useLocale();
   const [showKey, setShowKey] = React.useState(false);
   const enabled = settings?.enabled ?? !requiresKey;
   const apiKey = settings?.apiKey ?? "";
@@ -438,7 +441,7 @@ function ProviderCard({
                 {isBuiltIn && (
                   <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">
                     <CheckCircle2 className="size-3" />
-                    Yerleşik
+                    {t("settings.builtin")}
                   </Badge>
                 )}
               </CardTitle>
@@ -452,13 +455,13 @@ function ProviderCard({
         {isBuiltIn ? (
           <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-2.5 text-xs text-emerald-300 flex items-center gap-2">
             <CheckCircle2 className="size-4" />
-            Yerleşik — anahtar gerekmez, hemen çalışır.
+            {t("settings.builtin.note")}
           </div>
         ) : (
           <div className="space-y-2">
             <Label htmlFor={`key-${id}`} className="flex items-center gap-2">
               <KeyRound className="size-3.5" />
-              API Anahtarı
+              {t("settings.apiKey")}
             </Label>
             <div className="relative">
               <Input
@@ -466,14 +469,14 @@ function ProviderCard({
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => onChange({ apiKey: e.target.value })}
-                placeholder={requiresKey ? "Anahtarınızı girin" : "Opsiyonel"}
+                placeholder={requiresKey ? t("settings.apiKey.placeholder") : t("common.optional")}
                 className="pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowKey((s) => !s)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label={showKey ? "Gizle" : "Göster"}
+                aria-label={showKey ? t("common.hide") : t("common.show")}
               >
                 {showKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
@@ -485,7 +488,7 @@ function ProviderCard({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-fuchsia-500 hover:underline"
               >
-                Anahtar al <ExternalLink className="size-3" />
+                {t("create.config.getKey")} <ExternalLink className="size-3" />
               </a>
             )}
           </div>
@@ -494,7 +497,7 @@ function ProviderCard({
         {models && models.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-              Modeller
+              {t("settings.models")}
             </p>
             <div className="flex flex-wrap gap-1">
               {models.map((m) => (
@@ -509,7 +512,7 @@ function ProviderCard({
         {voices && voices.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-              Sesler ({voices.length})
+              {t("settings.voices")} ({voices.length})
             </p>
             <ul className="text-xs text-muted-foreground space-y-1 max-h-28 overflow-y-auto scrollbar-thin">
               {voices.map((v) => (

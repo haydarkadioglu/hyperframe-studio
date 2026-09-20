@@ -678,3 +678,11 @@
   animation: ken-burns-rich 16s ease-in-out infinite;
   will-change: transform;
 }
+
+/* ===== RTL (Arabic) support ===== */
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+[dir="rtl"] body {
+  text-align: right;
+}

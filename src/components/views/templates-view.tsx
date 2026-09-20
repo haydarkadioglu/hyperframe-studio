@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { LayoutTemplate, Wand2, ArrowRight } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useLocale } from "@/lib/use-locale";
 import { MODE_MAP, TONE_MAP, STYLE_MAP, LANGUAGE_MAP } from "@/lib/providers";
 import type { VideoMode, Tone, VideoStyle, AspectRatio } from "@/lib/types";
 import {
@@ -21,6 +22,8 @@ interface Template {
   id: string;
   name: string;
   desc: string;
+  nameKey?: string;
+  descKey?: string;
   mode: VideoMode;
   tone: Tone;
   style: VideoStyle;
@@ -35,6 +38,8 @@ const TEMPLATES: Template[] = [
     id: "product-launch",
     name: "Ürün Lansmanı",
     desc: "Yeni bir ürünü tanıtmak için enerjik ve canlı bir tanıtım videosu.",
+    nameKey: "templates.launch",
+    descKey: "templates.launch.desc",
     mode: "product",
     tone: "energetic",
     style: "vibrant",
@@ -46,6 +51,8 @@ const TEMPLATES: Template[] = [
     id: "tech-news",
     name: "Teknoloji Haber",
     desc: "Tarafsız, net bir anchorman tonuyla teknoloji haberi formatı.",
+    nameKey: "templates.techNews",
+    descKey: "templates.techNews.desc",
     mode: "topic",
     tone: "news",
     style: "corporate",
@@ -57,6 +64,8 @@ const TEMPLATES: Template[] = [
     id: "motivation",
     name: "Motivasyon Paylaşımı",
     desc: "Sosyal medya için ilham verici, cesur bir motivasyon klibi.",
+    nameKey: "templates.motivation",
+    descKey: "templates.motivation.desc",
     mode: "topic",
     tone: "inspirational",
     style: "bold",
@@ -68,6 +77,8 @@ const TEMPLATES: Template[] = [
     id: "edu-explain",
     name: "Eğitim Anlatımı",
     desc: "Belgesel tarzı, sade ve bilgilendirici bir konu anlatımı.",
+    nameKey: "templates.education",
+    descKey: "templates.education.desc",
     mode: "topic",
     tone: "documentary",
     style: "minimal",
@@ -79,6 +90,8 @@ const TEMPLATES: Template[] = [
     id: "yt-shorts",
     name: "YouTube Shorts",
     desc: "Dikey 9:16, hızlı tempolu ve enerjik YouTube Shorts formatı.",
+    nameKey: "templates.shorts",
+    descKey: "templates.shorts.desc",
     mode: "youtube",
     tone: "energetic",
     style: "modern",
@@ -91,6 +104,8 @@ const TEMPLATES: Template[] = [
     id: "corp-intro",
     name: "Kurumsal Tanıtım",
     desc: "Profesyonel ve zarif bir kurum veya marka tanıtım videosu.",
+    nameKey: "templates.corporate",
+    descKey: "templates.corporate.desc",
     mode: "product",
     tone: "professional",
     style: "elegant",
@@ -102,6 +117,8 @@ const TEMPLATES: Template[] = [
     id: "doc-trailer",
     name: "Belgesel Fragmanı",
     desc: "Dramatik ve sinematik ton, sürükleyici bir fragman havası.",
+    nameKey: "templates.docTrailer",
+    descKey: "templates.docTrailer.desc",
     mode: "topic",
     tone: "dramatic",
     style: "cinematic",
@@ -113,6 +130,8 @@ const TEMPLATES: Template[] = [
     id: "social-ad",
     name: "Sosyal Medya Reklamı",
     desc: "Kare 1:1, samimi ve eğlenceli bir sosyal medya reklam klibi.",
+    nameKey: "templates.socialAd",
+    descKey: "templates.socialAd.desc",
     mode: "product",
     tone: "friendly",
     style: "playful",
@@ -179,14 +198,15 @@ const item = {
 export function TemplatesView() {
   const go = useApp((s) => s.go);
   const setWizard = useApp((s) => s.setWizard);
+  const { t } = useLocale();
 
-  const applyTemplate = (t: Template) => {
+  const applyTemplate = (tpl: Template) => {
     setWizard({
-      mode: t.mode,
-      tone: t.tone,
-      style: t.style,
-      language: t.language,
-      aspectRatio: t.aspectRatio ?? "16:9",
+      mode: tpl.mode,
+      tone: tpl.tone,
+      style: tpl.style,
+      language: tpl.language,
+      aspectRatio: tpl.aspectRatio ?? "16:9",
       step: 1,
     });
     go("create");
@@ -198,15 +218,14 @@ export function TemplatesView() {
         <div className="orb orb-sm bg-fuchsia-500/30 -top-6 right-4" />
         <div className="orb orb-sm bg-violet-500/25 -bottom-8 -left-6" />
         <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-500 font-semibold relative">
-          Hızlı başlangıç
+          {t("templates.subtitle")}
         </p>
         <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 text-balance relative">
           <LayoutTemplate className="size-6 text-fuchsia-500" />
-          Şablonlar
+          {t("templates.title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-2xl relative">
-          Hazır kullanım senaryolarından birini seçin — ton, stil, dil ve mod
-          otomatik ayarlanır. Sonrasında videonu üretmeye başlayın.
+          {t("templates.subtitle")}
         </p>
       </header>
 
@@ -216,18 +235,20 @@ export function TemplatesView() {
         animate="show"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       >
-        {TEMPLATES.map((t) => {
-          const modeInfo = MODE_MAP[t.mode];
-          const toneInfo = TONE_MAP[t.tone];
-          const styleInfo = STYLE_MAP[t.style];
-          const langInfo = LANGUAGE_MAP[t.language];
+        {TEMPLATES.map((tpl) => {
+          const modeInfo = MODE_MAP[tpl.mode];
+          const toneInfo = TONE_MAP[tpl.tone];
+          const styleInfo = STYLE_MAP[tpl.style];
+          const langInfo = LANGUAGE_MAP[tpl.language];
+          const name = tpl.nameKey ? t(tpl.nameKey) : tpl.name;
+          const desc = tpl.descKey ? t(tpl.descKey) : tpl.desc;
           return (
             <motion.button
-              key={t.id}
+              key={tpl.id}
               variants={item}
               whileHover={{ y: -6 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => applyTemplate(t)}
+              onClick={() => applyTemplate(tpl)}
               className="text-left"
             >
               <Card className="glass card-glow shine-on-hover card-hover-lift h-full overflow-hidden group hover:border-fuchsia-500/50 accent-ring-hover relative">
@@ -236,7 +257,7 @@ export function TemplatesView() {
                   <div
                     className={cn(
                       "absolute inset-0 bg-gradient-to-br animated-gradient bg-[length:200%_200%]",
-                      t.gradient
+                      tpl.gradient
                     )}
                   />
                   {/* Decorative dots pattern */}
@@ -265,41 +286,41 @@ export function TemplatesView() {
 
                   <div className="absolute inset-0 grid place-items-center">
                     <span className="text-6xl drop-shadow-2xl group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500">
-                      {t.emoji}
+                      {tpl.emoji}
                     </span>
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                  {t.aspectRatio && (
+                  {tpl.aspectRatio && (
                     <div className="absolute top-3 right-3">
                       <Badge className="bg-black/50 text-white border-0 backdrop-blur-sm">
-                        {t.aspectRatio}
+                        {tpl.aspectRatio}
                       </Badge>
                     </div>
                   )}
-                  {/* Slide-up "Kullan" CTA on hover */}
+                  {/* Slide-up "Use" CTA on hover */}
                   <div className="absolute inset-x-0 bottom-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <div className="rounded-lg accent-gradient px-3 py-2 text-center text-sm font-semibold text-white shadow-lg flex items-center justify-center gap-1.5">
-                      Kullan
+                      {t("templates.use")}
                       <ArrowRight className="size-3.5" />
                     </div>
                   </div>
                 </div>
                 <CardHeader>
                   <CardTitle className="text-base flex items-center justify-between gap-2">
-                    {t.name}
+                    {name}
                     <ArrowRight className="size-4 text-muted-foreground group-hover:text-fuchsia-500 group-hover:translate-x-1 transition-all" />
                   </CardTitle>
                   <CardDescription className="text-xs leading-relaxed">
-                    {t.desc}
+                    {desc}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="outline" className="text-[10px]">
-                      {modeInfo?.emoji} {modeInfo?.label}
+                      {modeInfo?.emoji} {t(`mode.${tpl.mode}.label`)}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
-                      {toneInfo?.emoji} {toneInfo?.label}
+                      {toneInfo?.emoji} {t(`tone.${tpl.tone}.label`)}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
                       {styleInfo?.label}
@@ -320,10 +341,7 @@ export function TemplatesView() {
       <Card className="border-dashed">
         <CardContent className="py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-center sm:text-left">
-            <p className="font-medium">İhtiyacın olan şablonu bulamadın mı?</p>
-            <p className="text-sm text-muted-foreground">
-              Boş bir tuvalle başla ve kendi ayarlarını seç.
-            </p>
+            <p className="font-medium">{t("templates.startBlank")}</p>
           </div>
           <Button
             onClick={() => {
@@ -333,7 +351,7 @@ export function TemplatesView() {
             className="btn-gradient shine-on-hover text-white border-0 min-h-[44px] relative overflow-hidden"
           >
             <Wand2 className="size-4" />
-            Sıfırdan Başla
+            {t("templates.startBlank")}
           </Button>
         </CardContent>
       </Card>

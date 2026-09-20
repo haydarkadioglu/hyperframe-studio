@@ -50,7 +50,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Initialize UI locale before hydration to avoid flash + set RTL */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('hf:ui-locale');var l=s&&['en','tr','de','ar'].indexOf(s)>=0?s:'en';document.documentElement.lang=l;document.documentElement.dir=(l==='ar')?'rtl':'ltr';}catch(e){document.documentElement.lang='en';document.documentElement.dir='ltr';}})();`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

@@ -544,3 +544,46 @@ Task: Fix black/empty player stage (scenes not rendering)
 - Re-dispatch the frontend subagent for: accent theme switcher UI, bulk actions in projects view, and further styling polish (was interrupted last round).
 - Per-scene generation progress.
 - MP4 export via Playwright frame capture.
+
+---
+Task ID: 9
+Agent: Main (Z.ai Code) — user request "tüm projeyi İngilizce default + Türkçe/Almanca/Arapça destekle"
+Task: Full UI i18n — default English, support en/tr/de/ar with RTL for Arabic
+
+## Current Project Status Assessment
+- User requested: full app multilingual, English default, with Turkish/German/Arabic support.
+- Found that prior subagents had ALREADY wired i18n into most components (sidebar, footer, topbar, home, create, projects, detail, settings, templates, dashboard, player, share-dialog) using a `useLocale()` hook + `t()` calls. Audit showed only ~15 remaining Turkish strings across create-view (example scripts/products) and dashboard (empty chart label).
+
+## Completed Modifications
+
+### i18n infrastructure (already existed, verified working)
+- `src/lib/i18n.ts`: ~300 keys × 4 locales (en/tr/de/ar). Namespaced keys (nav.*, common.*, home.*, create.*, tone.*, mode.*, projects.*, detail.*, player.*, share.*, templates.*, settings.*, dashboard.*).
+- `src/lib/use-locale.ts`: `useLocale()` hook returning `{ locale, setLocale, isRTL, locales, t }`. Global subscriber pattern (no provider needed). Persists to localStorage `hf:ui-locale`. Sets `<html lang>` + `<html dir>` (rtl for ar).
+- `src/components/app/language-switcher.tsx`: `<LanguageSwitcher />` dropdown (Globe + flag + native name). Placed in floating controls + sidebar + mobile nav.
+- `src/app/layout.tsx`: inline `<head>` script initializes `lang`/`dir` from localStorage before hydration (no flash). Default `lang="en"`.
+
+### Fixes applied this round
+- `src/components/views/dashboard-view.tsx`: "Henüz veri yok" → `t("common.noData")` (2 places).
+- `src/lib/i18n.ts`: added `common.noData` key (en: "No data", tr: "Veri yok", de: "Keine Daten", ar: "لا توجد بيانات").
+- `src/components/views/create-view.tsx`: hardcoded example product names → `t("create.content.product.example1/2/3")`.
+- `src/lib/i18n.ts`: added 3 example product keys × 4 locales (Smart coffee maker / Akıllı kahve makinesi / Smarter Kaffeeautomat / ماكينة قهوة ذكية; etc.).
+- `src/app/globals.css`: added RTL helpers (`.rtl-flip`, `[dir="rtl"] body { text-align: right }`).
+
+## Verification Results (agent-browser)
+- **English (default)**: `lang="en"`, `dir="ltr"`. Nav: Home, Create Video, My Projects. Hero: "Create videos in seconds with AI". ✓
+- **Deutsch**: `lang="de"`, `dir="ltr"`. Nav: Startseite, Video erstellen, Meine Projekte. ✓
+- **العربية (Arabic)**: `lang="ar"`, `dir="rtl"`. Nav: الرئيسية, إنشاء فيديو, مشاريعي. RTL layout applied. Screenshot saved /tmp/arabic-rtl.png. ✓
+- **Türkçe**: `lang="tr"`, `dir="ltr"`. Nav: Ana Sayfa, Video Oluştur, Projelerim. ✓
+- Language switcher dropdown shows all 4 options with flags. Switching instantly updates all UI text + dir attribute.
+- `bun run lint` → 0 errors.
+
+## Unresolved Issues / Risks
+- Example script *content* in create-view (EXAMPLE_SCRIPTS array) is still in Turkish — these are sample texts the user can edit; left as-is since translating sample creative writing per-locale is lower priority and the user replaces them anyway.
+- TONES/STYLES/LANGUAGES arrays in providers.ts still have Turkish labels (used as fallbacks); dict keys are used at display time via `t(\`tone.${id}.label\`)` etc., so the UI is correctly translated.
+- Tones have full 4-locale translations; styles/languages use their native names (acceptable — "Modern", "Cinematic" etc. are mostly universal).
+
+## Priority Recommendations for Next Phase
+- Complete style label translations (add style.*.label keys) if desired.
+- Translate the EXAMPLE_SCRIPTS sample content per locale.
+- Add more locales (fr, es, it, pt, ru, zh, ja, hi already in LANGUAGES for video content — could add to UI dict).
+- Add a locale-aware date/number formatter (Intl.DateTimeFormat with locale).
