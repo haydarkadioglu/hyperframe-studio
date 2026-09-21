@@ -1,8 +1,6 @@
 # Hyperframe Studio
 
-**AI-powered video creator** — turn a topic, a script, or a product photo into an animated, narrated, subtitled video in minutes. Built with Next.js, the Z.ai web-dev SDK (LLM + TTS + VLM + image generation), and a polished scene-based animated player.
-
-![Hyperframe Studio](public/logo.svg)
+**AI-powered video creator** — turn a topic, a script, or a product photo into an animated, narrated, subtitled video in minutes.
 
 ---
 
