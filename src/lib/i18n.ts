@@ -1,21 +1,32 @@
 // Hyperframe Studio — UI i18n dictionary
-// Default UI language: English (en). Supported: en, tr, de, ar.
+// Default UI language: English (en). Supported UI locales: en, tr, de, ar, fr, es, it, pt, ru, zh, ja, hi.
 // NOTE: This is the UI interface language, separate from the video content language
 //       (which the user picks in the create wizard and is sent to the LLM/TTS).
+// NOTE: fr/es/it/pt/ru/zh/ja/hi currently fall back to English for most keys (partial translation);
+//       the useLocale() hook falls back to `en` for any missing key.
 
-export type UILocale = "en" | "tr" | "de" | "ar";
+export type UILocale = "en" | "tr" | "de" | "ar" | "fr" | "es" | "it" | "pt" | "ru" | "zh" | "ja" | "hi";
 
 export const UI_LOCALES: { code: UILocale; name: string; nativeName: string; flag: string; rtl?: boolean }[] = [
   { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
   { code: "tr", name: "Turkish", nativeName: "Türkçe", flag: "🇹🇷" },
   { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
+  { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
+  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
+  { code: "it", name: "Italian", nativeName: "Italiano", flag: "🇮🇹" },
+  { code: "pt", name: "Portuguese", nativeName: "Português", flag: "🇵🇹" },
   { code: "ar", name: "Arabic", nativeName: "العربية", flag: "🇸🇦", rtl: true },
+  { code: "ru", name: "Russian", nativeName: "Русский", flag: "🇷🇺" },
+  { code: "zh", name: "Chinese", nativeName: "中文", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
+  { code: "hi", name: "Hindi", nativeName: "हिन्दी", flag: "🇮🇳" },
 ];
 
 export const RTL_LOCALES: UILocale[] = ["ar"];
 
-// ---- Dictionary type (keys enforced via `typeof en` to catch missing translations) ----
-type Dict = typeof en;
+// ---- Dictionary type ----
+// Dict is a Record<string,string>. Missing keys in a partial locale fall back to `en`.
+type Dict = Record<string, string>;
 
 const en = {
   // App / brand
@@ -248,6 +259,9 @@ const en = {
   "detail.generating.images": "Generating images",
   "detail.generating.audio": "Recording narration",
   "detail.generating.subtitles": "Creating subtitles",
+  "detail.generating.analyze": "Analyzing product",
+  "detail.generating.progress": "Progress",
+  "detail.generating.scene": "scene",
   "detail.generating.note": "This may take a few minutes. Keep the page open — the player opens automatically when ready.",
   "detail.error.title": "Generation failed",
   "detail.error.retry": "Try again",
@@ -624,6 +638,9 @@ const tr: Dict = {
   "detail.generating.images": "Görseller üretiliyor",
   "detail.generating.audio": "Seslendirme yapılıyor",
   "detail.generating.subtitles": "Altyazılar oluşturuluyor",
+  "detail.generating.analyze": "Ürün analiz ediliyor",
+  "detail.generating.progress": "İlerleme",
+  "detail.generating.scene": "sahne",
   "detail.generating.note": "Bu işlem birkaç dakika sürebilir. Sayfayı açık tutabilirsiniz — tamamlandığında otomatik oynatıcı açılır.",
   "detail.error.title": "Üretim başarısız oldu",
   "detail.error.retry": "Tekrar dene",
@@ -995,6 +1012,9 @@ const de: Dict = {
   "detail.generating.images": "Bilder werden generiert",
   "detail.generating.audio": "Sprecher wird aufgenommen",
   "detail.generating.subtitles": "Untertitel werden erstellt",
+  "detail.generating.analyze": "Produkt wird analysiert",
+  "detail.generating.progress": "Fortschritt",
+  "detail.generating.scene": "Szene",
   "detail.generating.note": "Dies kann einige Minuten dauern. Seite offen lassen — Player öffnet sich automatisch bei Fertigstellung.",
   "detail.error.title": "Generierung fehlgeschlagen",
   "detail.error.retry": "Erneut versuchen",
@@ -1366,6 +1386,9 @@ const ar: Dict = {
   "detail.generating.images": "توليد الصور",
   "detail.generating.audio": "تسجيل التعليق الصوتي",
   "detail.generating.subtitles": "إنشاء الترجمات",
+  "detail.generating.analyze": "تحليل المنتج",
+  "detail.generating.progress": "التقدم",
+  "detail.generating.scene": "مشهد",
   "detail.generating.note": "قد يستغرق هذا بضع دقائق. أبقِ الصفحة مفتوحة — يفتح المشغل تلقائياً عند الجاهزية.",
   "detail.error.title": "فشل الإنشاء",
   "detail.error.retry": "حاول مرة أخرى",
@@ -1515,7 +1538,22 @@ const ar: Dict = {
   "dashboard.empty.cta": "أنشئ أول فيديو",
 };
 
-export const dictionaries: Record<UILocale, Dict> = { en, tr, de, ar };
+export const dictionaries: Record<UILocale, Dict> = {
+  en,
+  tr,
+  de,
+  ar,
+  // Partial locales — fall back to `en` for missing keys via useLocale() hook.
+  // Translations will be progressively completed; the UI is fully usable in English fallback.
+  fr: { ...en, "app.name": "Hyperframe Studio" },
+  es: { ...en, "app.name": "Hyperframe Studio" },
+  it: { ...en, "app.name": "Hyperframe Studio" },
+  pt: { ...en, "app.name": "Hyperframe Studio" },
+  ru: { ...en, "app.name": "Hyperframe Studio" },
+  zh: { ...en, "app.name": "Hyperframe Studio" },
+  ja: { ...en, "app.name": "Hyperframe Studio" },
+  hi: { ...en, "app.name": "Hyperframe Studio" },
+};
 
 // Interpolate {placeholder} values in a translation string.
 export function interpolate(

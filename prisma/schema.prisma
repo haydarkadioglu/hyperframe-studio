@@ -30,6 +30,7 @@ model VideoProject {
   durationSec  Int      @default(0)
   sceneCount   Int      @default(0)
   errorMessage String?
+  progress     String?  // JSON: { step: "script"|"images"|"audio"|"subtitles", sceneIdx: number, total: number, done: number }
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

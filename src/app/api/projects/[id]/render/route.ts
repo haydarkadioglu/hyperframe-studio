@@ -77,7 +77,11 @@ async function runGeneration(
     aspectRatio: string;
   }
 ) {
-  await updateProject(projectId, { status: "generating", errorMessage: null });
+  await updateProject(projectId, {
+    status: "generating",
+    errorMessage: null,
+    progress: { step: "analyzing", total: opts.targetScenes, done: 0, message: "analyzing" },
+  });
 
   // 1) Product analysis (if product mode)
   let productAnalysis: string | undefined;
@@ -102,6 +106,9 @@ async function runGeneration(
   }
 
   // 2) Generate script
+  await updateProject(projectId, {
+    progress: { step: "script", total: opts.targetScenes, done: 0, message: "writing script" },
+  });
   const script = await generateScript({
     topic: opts.topic,
     mode: opts.mode as any,
@@ -115,11 +122,28 @@ async function runGeneration(
 
   const scenes: Scene[] = script.scenes;
 
+  // Persist scenes early so the UI can show scene placeholders while images generate
+  await updateProject(projectId, {
+    scenes,
+    progress: { step: "images", total: scenes.length, done: 0, sceneIdx: 0, message: "generating images" },
+  });
+
   // 3) Generate images for scenes that have imagePrompt
   const sizeForAspect = imageSizeForAspect(opts.aspectRatio);
   let thumbUrl: string | undefined;
+  const imageScenes = scenes.filter((s) => s.imagePrompt);
+  let imagesDone = 0;
   for (const scene of scenes) {
     if (scene.imagePrompt) {
+      await updateProject(projectId, {
+        progress: {
+          step: "images",
+          total: imageScenes.length,
+          done: imagesDone,
+          sceneIdx: scene.index,
+          message: `generating image ${imagesDone + 1}/${imageScenes.length}`,
+        },
+      });
       try {
         const { buffer } = await generateImage(scene.imagePrompt, sizeForAspect);
         const saved = await saveAssetBuffer(buffer, "png", "image");
@@ -129,10 +153,25 @@ async function runGeneration(
       } catch (e) {
         console.error("Image gen failed for scene", scene.index, e);
       }
+      imagesDone++;
+      // Persist updated scenes after each image so UI reflects progress incrementally
+      await updateProject(projectId, {
+        scenes,
+        progress: {
+          step: "images",
+          total: imageScenes.length,
+          done: imagesDone,
+          sceneIdx: scene.index,
+          message: `generated image ${imagesDone}/${imageScenes.length}`,
+        },
+      });
     }
   }
 
   // 4) Generate TTS audio for full narration (concatenated)
+  await updateProject(projectId, {
+    progress: { step: "audio", total: scenes.length, done: 0, message: "recording narration" },
+  });
   const fullNarration = scenes.map((s) => s.narration || s.text).join(" ");
   const { voice, speed } = recommendTts("zai", opts.tone, opts.language);
   let audioUrl: string | undefined;
@@ -146,6 +185,9 @@ async function runGeneration(
   }
 
   // 5) Build SRT subtitles
+  await updateProject(projectId, {
+    progress: { step: "subtitles", total: scenes.length, done: scenes.length, message: "creating subtitles" },
+  });
   const subtitles = buildSRT(scenes);
 
   // 6) Update project to ready
@@ -157,6 +199,7 @@ async function runGeneration(
     subtitles,
     thumbnailUrl: thumbUrl ?? null,
     errorMessage: null,
+    progress: { step: "done", total: scenes.length, done: scenes.length, message: "done" },
   });
 }
 

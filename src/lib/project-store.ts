@@ -1,5 +1,5 @@
 import { db } from "./db";
-import type { VideoProject, Scene, ProjectStatus } from "./types";
+import type { VideoProject, Scene, ProjectStatus, GenerationProgress } from "./types";
 import { scenesToJson, jsonToScenes } from "./subtitles";
 
 export interface ProjectRow {
@@ -47,9 +47,20 @@ export function rowToProject(row: any): ProjectRow {
     durationSec: row.durationSec,
     sceneCount: row.sceneCount,
     errorMessage: row.errorMessage,
+    progress: row.progress ? safeParseProgress(row.progress) : null,
     createdAt: row.createdAt?.toISOString?.() ?? row.createdAt,
     updatedAt: row.updatedAt?.toISOString?.() ?? row.updatedAt,
   };
+}
+
+function safeParseProgress(s: string): GenerationProgress | null {
+  try {
+    const p = JSON.parse(s);
+    if (p && typeof p === "object" && typeof p.step === "string") {
+      return p as GenerationProgress;
+    }
+  } catch {}
+  return null;
 }
 
 export function rowToVideoProject(row: any): VideoProject {
@@ -131,6 +142,7 @@ export async function updateProject(
     errorMessage: string | null;
     tone: string;
     style: string;
+    progress: GenerationProgress | null;
   }>
 ) {
   const row = await db.videoProject.update({
@@ -149,6 +161,7 @@ export async function updateProject(
       ...(data.errorMessage !== undefined ? { errorMessage: data.errorMessage } : {}),
       ...(data.tone !== undefined ? { tone: data.tone } : {}),
       ...(data.style !== undefined ? { style: data.style } : {}),
+      ...(data.progress !== undefined ? { progress: data.progress ? JSON.stringify(data.progress) : null } : {}),
     },
   });
   return rowToVideoProject(row);

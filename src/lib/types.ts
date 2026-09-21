@@ -32,6 +32,14 @@ export interface Scene {
   accentColor?: string;
 }
 
+export interface GenerationProgress {
+  step: "idle" | "analyzing" | "script" | "images" | "audio" | "subtitles" | "done" | "error";
+  sceneIdx?: number; // current scene being processed (images step)
+  total: number; // total scenes
+  done: number; // scenes completed
+  message?: string;
+}
+
 export interface VideoProject {
   id: string;
   title: string;
@@ -52,6 +60,7 @@ export interface VideoProject {
   durationSec: number;
   sceneCount: number;
   errorMessage?: string;
+  progress?: GenerationProgress | null;
   createdAt: string;
   updatedAt: string;
 }

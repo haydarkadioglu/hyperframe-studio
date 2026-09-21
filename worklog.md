@@ -587,3 +587,62 @@ Task: Full UI i18n — default English, support en/tr/de/ar with RTL for Arabic
 - Translate the EXAMPLE_SCRIPTS sample content per locale.
 - Add more locales (fr, es, it, pt, ru, zh, ja, hi already in LANGUAGES for video content — could add to UI dict).
 - Add a locale-aware date/number formatter (Intl.DateTimeFormat with locale).
+
+---
+Task ID: 10
+Agent: Main (Z.ai Code) — "kaldığın yerden devam et"
+Task: Per-scene generation progress + expand UI to 12 languages
+
+## Current Project Status Assessment
+- Project stable, i18n (en/tr/de/ar) working, lint clean, dev server up.
+- Continuing from worklog recommendations: per-scene progress + more UI locales.
+
+## Completed Modifications
+
+### Feature 1: Per-scene generation progress
+**Backend:**
+- `prisma/schema.prisma`: added `progress String?` column to VideoProject (JSON string).
+- `src/lib/types.ts`: added `GenerationProgress` interface (`{ step, sceneIdx?, total, done, message? }`) + added `progress?` field to `VideoProject`.
+- `src/lib/project-store.ts`: `rowToProject` now parses `progress` JSON; `updateProject` accepts + persists `progress`.
+- `src/app/api/projects/[id]/render/route.ts`: `runGeneration` now writes progress at each phase:
+  - `analyzing` (5%) → product VLM analysis
+  - `script` (15%) → LLM script generation
+  - `images` (20-75%) → per-scene image generation, updating `done`/`sceneIdx` after EACH scene + persisting scenes so UI shows incremental thumbnails
+  - `audio` (80%) → TTS narration
+  - `subtitles` (92%) → SRT build
+  - `done` (100%) → final
+- Scenes are persisted early (after script) so the UI can show scene placeholders while images generate.
+
+**Frontend:**
+- `src/components/views/detail-view.tsx` `GeneratingView`: rewrote to use real `project.progress`:
+  - Shows percentage bar (animated width via framer-motion) with step-based % mapping.
+  - 5-step list (Analyzing/Script/Images/Audio/Subtitles) with active step from real progress (falls back to cycling animation if progress null).
+  - Per-scene sub-progress in the Images step: "{done}/{total} · scene {n}".
+  - Scene thumbnail strip that fills in as images arrive (emerald border = done, fuchsia pulse = current, muted = pending).
+  - Added `ScanSearch` icon import for the analyze step.
+- `src/lib/i18n.ts`: added `detail.generating.analyze`, `detail.generating.progress`, `detail.generating.scene` keys × 4 locales.
+
+### Feature 2: Expand UI to 12 languages
+- `src/lib/i18n.ts`:
+  - `UILocale` type expanded: `en | tr | de | ar | fr | es | it | pt | ru | zh | ja | hi`.
+  - `UI_LOCALES`: 12 entries with flags (🇬🇧🇹🇷🇩🇪🇫🇷🇪🇸🇮🇹🇵🇹🇸🇦🇷🇺🇨🇳🇯🇵🇮🇳).
+  - `Dict` type relaxed to `Record<string, string>` so partial locales work.
+  - `dictionaries`: fr/es/it/pt/ru/zh/ja/hi initialized as `{ ...en }` (English fallback). useLocale() hook already falls back to `en` for any missing key — UI is fully usable, translations can be progressively completed.
+- `src/app/layout.tsx`: inline `<head>` script now validates against all 12 locale codes.
+
+## Verification Results
+- `bun run lint` → 0 errors.
+- Per-scene progress: triggered re-render, monitored via API polling — confirmed `step` transitions analyzing→script→images (with done/total/sceneIdx incrementing per scene)→audio→done. UI verified via agent-browser: "31%", "42%", "3/5 · scene 3", scene thumbnail strip filling in.
+- 12-language switcher: agent-browser confirmed dropdown shows all 12 languages with flags. Switching to French → `lang="fr"`, to Japanese → `lang="ja"`, both LTR. (UI text shows English fallback for non-translated locales — expected, translations to be completed progressively.)
+- Screenshots: /tmp/japanese-ui.png.
+
+## Unresolved Issues / Risks
+- fr/es/it/pt/ru/zh/ja/hi locales are English-fallback (partial). Translations should be progressively added for full localization.
+- Image generation is the slowest step (~30-48s per scene × N scenes). Progress now shows this clearly to the user.
+
+## Priority Recommendations for Next Phase
+- Complete fr/es translations (Latin-script, lower effort) for fuller locale coverage.
+- Locale-aware date formatting (Intl.DateTimeFormat with locale) for project lists.
+- MP4 export via Playwright frame capture + ffmpeg mini-service.
+- Bulk actions (multi-select delete/duplicate/export) in projects view.
+- Real external provider integration (OpenAI/Claude/ElevenLabs when user supplies keys).

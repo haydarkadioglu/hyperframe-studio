@@ -25,6 +25,7 @@ import {
   Save,
   Image as ImageIcon,
   Share2,
+  ScanSearch,
 } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useLocale } from "@/lib/use-locale";
@@ -423,20 +424,49 @@ function StatusBadge({ status }: { status: VideoProject["status"] }) {
 
 function GeneratingView({ project }: { project: VideoProject }) {
   const { t } = useLocale();
-  const steps = [
-    { label: t("detail.generating.script"), icon: FileText },
-    { label: t("detail.generating.images"), icon: Palette },
-    { label: t("detail.generating.audio"), icon: AudioLines },
-    { label: t("detail.generating.subtitles"), icon: CaptionsIcon },
+  const progress = project.progress;
+  const stepOrder: Array<"analyzing" | "script" | "images" | "audio" | "subtitles" | "done"> = [
+    "analyzing",
+    "script",
+    "images",
+    "audio",
+    "subtitles",
   ];
+  const stepLabels: Record<string, { label: string; icon: typeof FileText }> = {
+    analyzing: { label: t("detail.generating.analyze"), icon: ScanSearch },
+    script: { label: t("detail.generating.script"), icon: FileText },
+    images: { label: t("detail.generating.images"), icon: Palette },
+    audio: { label: t("detail.generating.audio"), icon: AudioLines },
+    subtitles: { label: t("detail.generating.subtitles"), icon: CaptionsIcon },
+  };
+  const steps = stepOrder.map((s) => ({ id: s, ...stepLabels[s] }));
 
-  const [active, setActive] = React.useState(0);
+  // Determine active step from real progress (fallback to cycling animation)
+  const realActiveIdx = progress
+    ? stepOrder.indexOf(progress.step as any)
+    : -1;
+  const [cycleActive, setCycleActive] = React.useState(0);
   React.useEffect(() => {
-    const t = setInterval(() => {
-      setActive((a) => (a + 1) % steps.length);
+    if (realActiveIdx >= 0) return; // use real progress
+    const id = setInterval(() => {
+      setCycleActive((a) => (a + 1) % steps.length);
     }, 2200);
-    return () => clearInterval(t);
-  }, []);
+    return () => clearInterval(id);
+  }, [realActiveIdx, steps.length]);
+  const active = realActiveIdx >= 0 ? realActiveIdx : cycleActive;
+
+  // Compute percentage from progress
+  let pct = 0;
+  if (progress) {
+    if (progress.step === "done") pct = 100;
+    else if (progress.step === "analyzing") pct = 5;
+    else if (progress.step === "script") pct = 15;
+    else if (progress.step === "images" && progress.total > 0) {
+      // images: 20%..75% range
+      pct = 20 + Math.round((progress.done / progress.total) * 55);
+    } else if (progress.step === "audio") pct = 80;
+    else if (progress.step === "subtitles") pct = 92;
+  }
 
   const styleInfo = STYLE_MAP[project.style];
 
@@ -462,8 +492,30 @@ function GeneratingView({ project }: { project: VideoProject }) {
             </div>
             <h2 className="text-xl font-bold">{t("detail.generating.title")}</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {t("detail.generating.note")}
+              {progress?.message ? (
+                <span className="font-medium text-fuchsia-400">{progress.message}</span>
+              ) : (
+                t("detail.generating.note")
+              )}
             </p>
+
+            {/* Percentage + progress bar */}
+            {progress && (
+              <div className="mt-4 max-w-md mx-auto">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                  <span>{t("detail.generating.progress")}</span>
+                  <span className="tabular-nums font-semibold text-foreground">{pct}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <motion.div
+                    className="h-full accent-gradient"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 grid gap-2 text-left max-w-md mx-auto">
               {steps.map((s, i) => {
@@ -472,7 +524,7 @@ function GeneratingView({ project }: { project: VideoProject }) {
                 const isCurrent = i === active;
                 return (
                   <motion.div
-                    key={s.label}
+                    key={s.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.1 }}
@@ -487,7 +539,7 @@ function GeneratingView({ project }: { project: VideoProject }) {
                   >
                     <div
                       className={cn(
-                        "grid size-8 place-items-center rounded-lg",
+                        "grid size-8 place-items-center rounded-lg shrink-0",
                         isCurrent
                           ? "bg-fuchsia-500/20 text-fuchsia-400"
                           : done
@@ -503,11 +555,56 @@ function GeneratingView({ project }: { project: VideoProject }) {
                         <Icon className="size-4" />
                       )}
                     </div>
-                    <span className="text-sm font-medium">{s.label}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium block">{s.label}</span>
+                      {/* Per-scene sub-progress for image step */}
+                      {isCurrent && s.id === "images" && progress && progress.total > 0 && (
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          {progress.done}/{progress.total}
+                          {progress.sceneIdx !== undefined && progress.sceneIdx >= 0
+                            ? ` · ${t("detail.generating.scene")} ${progress.sceneIdx + 1}`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
                   </motion.div>
                 );
               })}
             </div>
+
+            {/* Scene thumbnail strip (shows as images arrive) */}
+            {project.scenes && project.scenes.length > 0 && (
+              <div className="mt-6 flex flex-wrap justify-center gap-1.5">
+                {project.scenes.map((sc, i) => (
+                  <div
+                    key={sc.id}
+                    className={cn(
+                      "relative size-12 rounded-lg overflow-hidden border-2 transition-all",
+                      sc.imageUrl
+                        ? "border-emerald-500/50"
+                        : progress?.step === "images" && progress.sceneIdx === i
+                        ? "border-fuchsia-500/70 pulse-glow"
+                        : "border-border/50 opacity-50"
+                    )}
+                    title={sc.text?.slice(0, 40)}
+                  >
+                    {sc.imageUrl ? (
+                      <img src={sc.imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full grid place-items-center bg-muted">
+                        {sc.imageUrl ? (
+                          <Check />
+                        ) : progress?.step === "images" && progress.sceneIdx === i ? (
+                          <Loader2 className="size-3.5 animate-spin text-fuchsia-400" />
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">{i + 1}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

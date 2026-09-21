@@ -55,7 +55,7 @@ export default function RootLayout({
         {/* Initialize UI locale before hydration to avoid flash + set RTL */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('hf:ui-locale');var l=s&&['en','tr','de','ar'].indexOf(s)>=0?s:'en';document.documentElement.lang=l;document.documentElement.dir=(l==='ar')?'rtl':'ltr';}catch(e){document.documentElement.lang='en';document.documentElement.dir='ltr';}})();`,
+            __html: `(function(){try{var codes=['en','tr','de','ar','fr','es','it','pt','ru','zh','ja','hi'];var s=localStorage.getItem('hf:ui-locale');var l=s&&codes.indexOf(s)>=0?s:'en';document.documentElement.lang=l;document.documentElement.dir=(l==='ar')?'rtl':'ltr';}catch(e){document.documentElement.lang='en';document.documentElement.dir='ltr';}})();`,
           }}
         />
       </head>
