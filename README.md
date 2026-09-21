@@ -47,73 +47,152 @@
 
 ---
 
-## 🚀 Getting started (local setup)
+## 🚀 Getting started
 
-### Prerequisites
+You can run Hyperframe Studio in **two ways**: directly with Node.js + npm, or with Docker.
 
-- **Node.js 18+** (or [Bun](https://bun.sh) — recommended, the project uses `bun`)
+### Option A — Local development (Node.js + npm)
+
+#### Prerequisites
+
+- **Node.js 18+** (v20 LTS or newer recommended)
+- **npm 9+** (comes with Node.js)
 - **Git**
-- An internet connection (the Z.ai SDK calls hosted AI models; no API key required for the built-in Z.ai provider)
+- Internet connection (the Z.ai SDK calls hosted AI models; no API key required for the built-in provider)
 
-### 1. Clone
+#### 1. Clone
 
 ```bash
 git clone https://github.com/haydarkadioglu/hyperframe-studio.git
 cd hyperframe-studio
 ```
 
-### 2. Install dependencies
-
-With Bun (recommended):
+#### 2. Install dependencies
 
 ```bash
-bun install
+npm install --legacy-peer-deps
 ```
 
-Or with npm:
+> The `--legacy-peer-deps` flag avoids peer-dependency resolution conflicts with the Z.ai SDK and some Radix packages.
 
-```bash
-npm install
-```
+#### 3. Configure environment
 
-### 3. Configure environment
-
-The app reads a single env var: `DATABASE_URL` (a SQLite file path). A default is already in `.env`:
+The app reads a single env var: `DATABASE_URL` (a SQLite file path). A `.env` is included by default:
 
 ```bash
 # .env
 DATABASE_URL=file:/home/z/my-project/db/custom.db
 ```
 
-> If you change the path, make sure the parent directory exists. A `.env.example` is provided as a template — copy it to `.env` and adjust if needed:
->
-> ```bash
-> cp .env.example .env
-> ```
+If you cloned to a different path, update it. Or copy the template and adjust:
+
+```bash
+cp .env.example .env
+# then edit .env to point to your desired db location
+```
 
 No API keys are required — the built-in Z.ai provider (GLM for LLM, Z.ai TTS for narration, GLM-4.6v for VLM, image generation) works out of the box. Optional external providers (OpenAI, Anthropic, Gemini, ElevenLabs, OpenAI TTS) can be configured in-app under **Settings** once you have their API keys.
 
-### 4. Set up the database
+#### 4. Set up the database
 
-The Prisma schema is in `prisma/schema.prisma`. Push it to create the SQLite database and tables:
+Push the Prisma schema to create the SQLite database and tables:
 
 ```bash
-bun run db:push
+npx prisma db push --accept-data-loss
 ```
 
 This creates `db/custom.db` and all tables (`VideoProject`, `Asset`, `ProviderSetting`, `AppSetting`).
 
-### 5. Run the dev server
+#### 5. Run the dev server
 
 ```bash
-bun run dev
+npm run dev
 ```
 
 The app starts on **http://localhost:3000**.
 
-### 6. Open it
+#### 6. Open it
 
 Open `http://localhost:3000` in your browser. You'll land on the home page (English by default). Use the **🌐 globe icon** (bottom-right) to switch the UI language. Click **New Video** to start creating.
+
+---
+
+### Option B — Docker (one command, no Node.js needed)
+
+#### Prerequisites
+
+- **[Docker](https://docs.docker.com/get-docker/)** (v20+)
+- **Docker Compose** v2 (included with Docker Desktop; on Linux install `docker-compose-plugin`)
+
+#### 1. Clone
+
+```bash
+git clone https://github.com/haydarkadioglu/hyperframe-studio.git
+cd hyperframe-studio
+```
+
+#### 2. Build & run
+
+```bash
+docker compose up --build
+```
+
+That's it. The first build takes a few minutes (installs deps, builds Next.js, generates Prisma client). Subsequent runs are instant (cached layers).
+
+The app is available at **http://localhost:3000**.
+
+#### Run detached (background)
+
+```bash
+docker compose up -d --build
+```
+
+#### Stop
+
+```bash
+docker compose down
+```
+
+#### What Docker does for you
+
+The `Dockerfile` is a **3-stage multi-stage build**:
+1. **deps** — installs all dependencies (cached).
+2. **builder** — runs `prisma generate` + `npm run build` (produces a Next.js standalone bundle).
+3. **runner** — minimal production image (~150 MB) with only the standalone server + static assets + prisma schema. Runs as a non-root user.
+
+On startup, the container runs `npx prisma db push` (creates the SQLite schema) then `node server.js` (Next.js standalone production server).
+
+#### Persistent data
+
+Two Docker named volumes keep your data across container recreations:
+
+| Volume | Mount path | Contents |
+|---|---|---|
+| `hyperframe-db` | `/app/db` | SQLite database (`custom.db`) — all your projects |
+| `hyperframe-assets` | `/app/public/assets` | Generated AI images + TTS audio files |
+| `hyperframe-uploads` | `/app/upload` | User-uploaded product photos |
+
+To **wipe all data** and start fresh:
+
+```bash
+docker compose down -v
+```
+
+#### View logs
+
+```bash
+docker compose logs -f
+```
+
+#### Rebuild after code changes
+
+```bash
+docker compose up --build
+```
+
+#### Custom port
+
+Edit `docker-compose.yml` and change `"3000:3000"` to e.g. `"8080:3000"` to expose the app on port 8080.
 
 ---
 
@@ -121,14 +200,14 @@ Open `http://localhost:3000` in your browser. You'll land on the home page (Engl
 
 | Script | What it does |
 |---|---|
-| `bun run dev` | Start the Next.js dev server (port 3000) with Turbopack |
-| `bun run build` | Production build |
-| `bun run start` | Start the production server (after `build`) |
-| `bun run lint` | Run ESLint |
-| `bun run db:push` | Push the Prisma schema to the SQLite database |
-| `bun run db:generate` | Regenerate the Prisma Client |
-| `bun run db:migrate` | Run Prisma migrations (dev) |
-| `bun run db:reset` | Reset the database (destructive) |
+| `npm run dev` | Start the Next.js dev server (port 3000) with Turbopack |
+| `npm run build` | Production build (standalone output) |
+| `npm start` | Start the production server (after `npm run build`) |
+| `npm run lint` | Run ESLint |
+| `npx prisma db push` | Push the Prisma schema to the SQLite database |
+| `npx prisma generate` | Regenerate the Prisma Client |
+| `npx prisma migrate dev` | Run Prisma migrations (dev) |
+| `npx prisma migrate reset` | Reset the database (destructive) |
 
 ---
 
@@ -181,6 +260,9 @@ Throughout, a **progress** object (`{ step, sceneIdx, total, done, message }`) i
 │       ├── store.ts             # Zustand store (view navigation, wizard state)
 │       ├── types.ts             # Shared TypeScript types (VideoProject, Scene, GenerationProgress, ...)
 │       └── db.ts                # Prisma Client singleton
+├── Dockerfile                   # Multi-stage production build
+├── docker-compose.yml           # One-command run with persistent volumes
+├── .dockerignore
 ├── .env                         # DATABASE_URL (gitignored)
 ├── .env.example                 # template
 ├── .gitignore
@@ -235,21 +317,30 @@ So you can have the UI in English while generating a video in Turkish — they d
 **The dev server won't start / port 3000 in use**
 Make sure nothing else is on port 3000. The project is configured to always use port 3000.
 
+**`npm install` fails with peer-dependency errors**
+Use the legacy resolver: `npm install --legacy-peer-deps`.
+
 **Generation stuck on "Generating..." forever**
 The dev server's hot-reload can kill an in-flight background job when you edit a file. The app detects this: if a project's status is "generating" but no job is actually running (and `updatedAt` is older than 90s), it auto-marks the project as "error" with a retry option. Click **Try again** to re-render.
 
 **Prisma error: "Unknown argument `progress`" (or similar)**
 The Prisma Client needs regenerating after a schema change:
 ```bash
-bun run db:generate
+npx prisma generate
 ```
-Then restart the dev server (`bun run dev`).
+Then restart the dev server (`npm run dev`).
 
 **No audio in the player**
 Browser autoplay policy may block audio until you interact. Click the **Play** button (or press space). Audio is WAV format (the Z.ai TTS API in this env rejects MP3).
 
 **Image generation is slow**
 ~30–48s per scene is normal for hosted diffusion models. The progress bar and per-scene thumbnail strip show exactly where it is.
+
+**Docker: build fails on `npm install`**
+Make sure you're using the `--legacy-peer-deps` resolver (already baked into the Dockerfile). If you have a local `node_modules` folder, ensure it's excluded by `.dockerignore` (it is by default).
+
+**Docker: can't access port 3000**
+Check the container is running: `docker compose ps`. View logs: `docker compose logs -f`. If another process uses port 3000, map to a different host port in `docker-compose.yml` (`"8080:3000"`).
 
 ---
 

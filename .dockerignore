@@ -1,0 +1,42 @@
+# Docker ignore — don't send these to the build context
+node_modules
+.next
+.git
+.gitignore
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Database
+db/*.db
+db/*.db-journal
+db/*.db-shm
+db/*.db-wal
+
+# Generated runtime assets
+public/assets/*
+!public/assets/.gitkeep
+upload/*
+!upload/.gitkeep
+download/*
+
+# Logs
+*.log
+dev.log
+server.log
+
+# Misc
+.DS_Store
+Thumbs.db
+*.pem
+README.md
+README.tr.md
+skills
+tests
+examples
+mini-services
+download/README.md
+.vscode
+.idea

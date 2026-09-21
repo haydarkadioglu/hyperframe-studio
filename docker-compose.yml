@@ -1,0 +1,35 @@
+# Hyperframe Studio — Docker Compose
+#
+# Usage:
+#   docker compose up --build      # build + run on http://localhost:3000
+#   docker compose up -d           # detached
+#   docker compose down            # stop + remove container
+#
+# The SQLite database file persists in a named volume (hyperframe-db).
+# Generated AI assets (images/audio) persist in a named volume (hyperframe-assets).
+
+services:
+  hyperframe-studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hyperframe-studio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # SQLite database location inside the container (persisted via volume)
+      DATABASE_URL: "file:/app/db/custom.db"
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      # Persistent SQLite database (survives container recreation)
+      - hyperframe-db:/app/db
+      # Persistent generated assets (AI images, TTS audio, uploads)
+      - hyperframe-assets:/app/public/assets
+      - hyperframe-uploads:/app/upload
+
+volumes:
+  hyperframe-db:
+  hyperframe-assets:
+  hyperframe-uploads:
