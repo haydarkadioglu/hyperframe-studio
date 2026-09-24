@@ -432,7 +432,7 @@ function GeneratingView({ project }: { project: VideoProject }) {
     "audio",
     "subtitles",
   ];
-  const stepLabels: Record<string, { label: string; icon: typeof FileText }> = {
+  const stepLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
     analyzing: { label: t("detail.generating.analyze"), icon: ScanSearch },
     script: { label: t("detail.generating.script"), icon: FileText },
     images: { label: t("detail.generating.images"), icon: Palette },
@@ -974,7 +974,7 @@ function SceneEditor({
                 {t("detail.sceneEditor.title")}
               </CardTitle>
               <CardDescription>
-                {t("detail.sceneEditor.subtitle")}
+                {t("detail.sceneEditor.desc")}
               </CardDescription>
             </div>
             {dirty && (

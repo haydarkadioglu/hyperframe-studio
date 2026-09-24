@@ -13,7 +13,7 @@ import type {
 export const LANGUAGES: LanguageInfo[] = [
   { code: "tr", name: "Turkish", nativeName: "Türkçe", flag: "🇹🇷" },
   { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
-  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇷" },
+  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
   { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
   { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
   { code: "it", name: "Italian", nativeName: "Italiano", flag: "🇮🇹" },

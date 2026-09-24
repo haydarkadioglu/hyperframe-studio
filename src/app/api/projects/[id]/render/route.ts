@@ -11,7 +11,7 @@ import { buildSRT } from "@/lib/subtitles";
 import { saveAssetBuffer, toDataUrl } from "@/lib/storage";
 import { TONE_SPEED } from "@/lib/providers";
 import { getProviderKey } from "@/lib/settings-store";
-import type { Scene, VideoProject } from "@/lib/types";
+import type { Scene, VideoProject, AnalyzeProductResponse } from "@/lib/types";
 
 // Background jobs tracker (in-memory; fine for single dev instance)
 const running = new Set<string>();
@@ -89,7 +89,7 @@ async function runGeneration(
   // 1) Product analysis (if product mode)
   let productAnalysis: string | undefined;
   if (opts.mode === "product" && opts.productImages.length > 0) {
-    const analyses = [];
+    const analyses: AnalyzeProductResponse[] = [];
     for (const img of opts.productImages.slice(0, 4)) {
       try {
         const analysis = await analyzeProductImage({

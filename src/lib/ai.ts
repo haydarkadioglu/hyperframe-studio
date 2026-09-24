@@ -170,6 +170,7 @@ export async function analyzeProductImage(
 Be specific and marketing-friendly. Return ONLY the JSON.`;
 
   const response = await zai.chat.completions.createVision({
+    model: "glm-4.5v",
     messages: [
       {
         role: "user",
@@ -226,9 +227,23 @@ async function generateImageZai(
   size: string
 ): Promise<{ base64: string; buffer: Buffer }> {
   const zai = await getZai();
+  const validSizes = [
+    "1024x1024",
+    "768x1344",
+    "864x1152",
+    "1344x768",
+    "1152x864",
+    "1440x720",
+    "720x1440",
+  ] as const;
+  type ValidSize = (typeof validSizes)[number];
+  const matchedSize: ValidSize = validSizes.includes(size as ValidSize)
+    ? (size as ValidSize)
+    : "1344x768";
+
   const response = await zai.images.generations.create({
     prompt,
-    size,
+    size: matchedSize,
   });
   const imageBase64 = response.data?.[0]?.base64;
   if (!imageBase64) throw new Error("Z.ai image generation returned no data");

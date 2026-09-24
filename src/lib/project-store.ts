@@ -23,6 +23,7 @@ export interface ProjectRow {
   durationSec: number;
   sceneCount: number;
   errorMessage: string | null;
+  progress?: GenerationProgress | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -72,7 +72,7 @@ const container = {
 };
 const item = {
   hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
 };
 
 export function DashboardView() {
@@ -511,6 +511,7 @@ function DistributionPie({
 }: {
   data: { id: string; label: string; emoji: string; count: number }[];
 }) {
+  const { t } = useLocale();
   const total = data.reduce((a, b) => a + b.count, 0);
   if (total === 0) {
     return <EmptyChart label={t("common.noData")} />;
@@ -590,6 +591,7 @@ function LanguageBar({
 }: {
   data: { code: string; name: string; flag: string; count: number }[];
 }) {
+  const { t } = useLocale();
   const total = data.reduce((a, b) => a + b.count, 0);
   if (total === 0) {
     return <EmptyChart label={t("common.noData")} />;

@@ -68,7 +68,6 @@ export default function RootLayout({
           defaultTheme="dark"
           enableSystem={false}
           disableTransitionOnChange
-          suppressHydrationWarning
         >
           <div className="min-h-screen flex flex-col bg-background text-foreground">
             {children}

@@ -71,7 +71,7 @@ interface SocialButton {
   id: string;
   labelKey?: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   badge?: string; // emoji/letter badge fallback when no lucide icon
   url: (text: string, shareUrl: string) => string;
   accent: string;
