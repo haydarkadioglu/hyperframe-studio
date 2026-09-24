@@ -48,6 +48,7 @@ export interface VideoProject {
   language: string;
   llmProvider: string;
   ttsProvider: string;
+  imageProvider: string;
   voice: string;
   tone: Tone;
   style: VideoStyle;
@@ -107,6 +108,19 @@ export interface TTSProviderInfo {
   website?: string;
 }
 
+export interface ImageProviderInfo {
+  id: string;
+  name: string;
+  kind: "image";
+  available: boolean;
+  description: string;
+  models: string[];
+  /** supported sizes the provider accepts (use the closest to requested) */
+  sizes: string[];
+  requiresKey: boolean;
+  website?: string;
+}
+
 export interface VoiceInfo {
   id: string;
   name: string;
@@ -131,6 +145,7 @@ export interface CreateProjectBody {
   language: string;
   llmProvider: string;
   ttsProvider: string;
+  imageProvider: string;
   voice: string;
   tone: Tone;
   style: VideoStyle;
@@ -175,10 +190,13 @@ export interface GenerateImageBody {
   size?: string;
   projectId?: string;
   sceneIdx?: number;
+  provider?: string;
 }
 
 export interface GenerateImageResponse {
   imageUrl: string;
+  provider?: string;
+  fallback?: boolean;
 }
 
 export interface AnalyzeProductBody {

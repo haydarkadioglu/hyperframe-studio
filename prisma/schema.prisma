@@ -18,6 +18,7 @@ model VideoProject {
   language     String   @default("tr")
   llmProvider  String   @default("zai")
   ttsProvider  String   @default("zai")
+  imageProvider String  @default("zai")
   voice        String   @default("tongtong")
   tone         String   @default("professional")
   style        String   @default("modern")

@@ -76,3 +76,5 @@ test
 !.vscode/settings.json
 *.swp
 *.swo
+.zscripts/
+tool-results/

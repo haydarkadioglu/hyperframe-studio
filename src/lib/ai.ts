@@ -197,10 +197,33 @@ Be specific and marketing-friendly. Return ONLY the JSON.`;
   };
 }
 
-// -------- Image generation --------
+// -------- Image generation (provider-aware) --------
+// Default provider = "zai" (built-in, no key). Others (OpenAI DALL·E, Stability, Replicate)
+// require an API key stored in ProviderSettings (Settings view) and make real external HTTP calls.
 export async function generateImage(
   prompt: string,
-  size: string = "1344x768"
+  size: string = "1344x768",
+  opts: { provider?: string; apiKey?: string; model?: string } = {}
+): Promise<{ base64: string; buffer: Buffer; url?: string }> {
+  const provider = opts.provider || "zai";
+  const apiKey = opts.apiKey;
+
+  switch (provider) {
+    case "openai-image":
+      return generateImageOpenAI(prompt, size, apiKey, opts.model);
+    case "stability":
+      return generateImageStability(prompt, size, apiKey, opts.model);
+    case "replicate":
+      return generateImageReplicate(prompt, size, apiKey, opts.model);
+    case "zai":
+    default:
+      return generateImageZai(prompt, size);
+  }
+}
+
+async function generateImageZai(
+  prompt: string,
+  size: string
 ): Promise<{ base64: string; buffer: Buffer }> {
   const zai = await getZai();
   const response = await zai.images.generations.create({
@@ -208,9 +231,167 @@ export async function generateImage(
     size,
   });
   const imageBase64 = response.data?.[0]?.base64;
-  if (!imageBase64) throw new Error("Image generation returned no data");
+  if (!imageBase64) throw new Error("Z.ai image generation returned no data");
   const buffer = Buffer.from(imageBase64, "base64");
   return { base64: imageBase64, buffer };
+}
+
+// Map our generic sizes to OpenAI DALL·E 3 supported sizes.
+function mapSizeForOpenAI(size: string): "1024x1024" | "1792x1024" | "1024x1792" {
+  const [w, h] = size.split("x").map((n) => parseInt(n, 10));
+  if (w && h) {
+    if (h > w) return "1024x1792"; // portrait
+    if (w > h * 1.6) return "1792x1024"; // wide landscape
+  }
+  return "1024x1024";
+}
+
+async function generateImageOpenAI(
+  prompt: string,
+  size: string,
+  apiKey?: string,
+  model?: string
+): Promise<{ base64: string; buffer: Buffer; url?: string }> {
+  if (!apiKey) throw new Error("OpenAI image generation requires an API key. Add it in Settings.");
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model || "dall-e-3",
+      prompt: prompt.slice(0, 4000),
+      n: 1,
+      size: mapSizeForOpenAI(size),
+      response_format: "b64_json",
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`OpenAI image API error ${res.status}: ${txt.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const b64 = data?.data?.[0]?.b64_json;
+  const url = data?.data?.[0]?.url;
+  if (!b64 && !url) throw new Error("OpenAI returned no image data");
+  if (b64) {
+    const buffer = Buffer.from(b64, "base64");
+    return { base64: b64, buffer, url };
+  }
+  // url-only response → fetch it
+  const imgRes = await fetch(url);
+  const ab = await imgRes.arrayBuffer();
+  const buffer = Buffer.from(new Uint8Array(ab));
+  return { base64: buffer.toString("base64"), buffer, url };
+}
+
+// Map to nearest Stability supported size.
+function mapSizeForStability(size: string): { width: number; height: number } {
+  const [w, h] = size.split("x").map((n) => parseInt(n, 10));
+  const pick = (opts: number[], target: number) =>
+    opts.reduce((a, b) => (Math.abs(b - target) < Math.abs(a - target) ? b : a));
+  const W = pick([1024, 1152, 1344, 864, 768], w || 1024);
+  const H = pick([1024, 1152, 1344, 864, 768], h || 1024);
+  return { width: W, height: H };
+}
+
+async function generateImageStability(
+  prompt: string,
+  size: string,
+  apiKey?: string,
+  model?: string
+): Promise<{ base64: string; buffer: Buffer }> {
+  if (!apiKey) throw new Error("Stability AI requires an API key. Add it in Settings.");
+  const engine = model || "stable-diffusion-xl-1024-v1-0";
+  const { width, height } = mapSizeForStability(size);
+  const res = await fetch(`https://api.stability.ai/v1/generation/${engine}/text-to-image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      text_prompts: [{ text: prompt.slice(0, 2000), weight: 1 }],
+      cfg_scale: 7,
+      width,
+      height,
+      steps: 30,
+      samples: 1,
+    }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Stability API error ${res.status}: ${txt.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  const b64 = data?.artifacts?.[0]?.base64;
+  if (!b64) throw new Error("Stability returned no image artifact");
+  const buffer = Buffer.from(b64, "base64");
+  return { base64: b64, buffer };
+}
+
+async function generateImageReplicate(
+  prompt: string,
+  size: string,
+  apiKey?: string,
+  model?: string
+): Promise<{ base64: string; buffer: Buffer; url?: string }> {
+  if (!apiKey) throw new Error("Replicate requires an API token. Add it in Settings.");
+  const [w, h] = size.split("x").map((n) => parseInt(n, 10));
+  const version = model || "black-forest-labs/flux-1.1-pro";
+  // Replicate predictions API
+  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      Prefer: "wait", // wait for completion synchronously when possible
+    },
+    body: JSON.stringify({
+      input: {
+        prompt: prompt.slice(0, 2000),
+        width: w || 1024,
+        height: h || 1024,
+        aspect_ratio: `${w || 1}:${h || 1}`,
+        output_format: "png",
+      },
+      version,
+    }),
+  });
+  if (!createRes.ok) {
+    const txt = await createRes.text();
+    throw new Error(`Replicate create error ${createRes.status}: ${txt.slice(0, 300)}`);
+  }
+  const prediction = await createRes.json();
+  // If synchronous wait worked, output is present.
+  let output = prediction?.output;
+  let status = prediction?.status;
+  let getUrl = prediction?.urls?.get;
+  // Poll if still processing
+  let pollCount = 0;
+  while ((!output || status === "starting" || status === "processing") && getUrl && pollCount < 60) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const pollRes = await fetch(getUrl, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!pollRes.ok) break;
+    const polled = await pollRes.json();
+    status = polled?.status;
+    output = polled?.output;
+    pollCount++;
+  }
+  if (status === "failed") throw new Error("Replicate prediction failed");
+  const outUrl = Array.isArray(output) ? output[0] : output;
+  if (!outUrl || typeof outUrl !== "string") {
+    throw new Error("Replicate returned no image URL");
+  }
+  // Download the image
+  const imgRes = await fetch(outUrl);
+  const ab = await imgRes.arrayBuffer();
+  const buffer = Buffer.from(new Uint8Array(ab));
+  return { base64: buffer.toString("base64"), buffer, url: outUrl };
 }
 
 // -------- TTS --------

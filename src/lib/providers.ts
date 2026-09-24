@@ -1,6 +1,7 @@
 import type {
   LLMProviderInfo,
   TTSProviderInfo,
+  ImageProviderInfo,
   VoiceInfo,
   LanguageInfo,
   Tone,
@@ -211,12 +212,63 @@ export const TTS_PROVIDERS: TTSProviderInfo[] = [
   },
 ];
 
+// ---- Image Providers ----
+export const IMAGE_PROVIDERS: ImageProviderInfo[] = [
+  {
+    id: "zai",
+    name: "Z.ai Image",
+    kind: "image",
+    available: true,
+    description: "Built-in image generation. Works instantly, no key needed.",
+    models: ["cogview-3-plus"],
+    sizes: ["1024x1024", "768x1344", "864x1152", "1344x768", "1152x864", "1440x720", "720x1440"],
+    requiresKey: false,
+  },
+  {
+    id: "openai-image",
+    name: "OpenAI DALL·E",
+    kind: "image",
+    available: true,
+    description: "DALL·E 3 (1024×1024 / 1792×1024 / 1024×1792). Bring your own API key.",
+    models: ["dall-e-3", "dall-e-2"],
+    sizes: ["1024x1024", "1792x1024", "1024x1792"],
+    requiresKey: true,
+    website: "https://platform.openai.com/api-keys",
+  },
+  {
+    id: "stability",
+    name: "Stability AI",
+    kind: "image",
+    available: true,
+    description: "Stable Diffusion 3 / SDXL. High-quality photorealism. API key required.",
+    models: ["stable-diffusion-3", "stable-diffusion-xl", "stable-image-core"],
+    sizes: ["1024x1024", "1344x768", "768x1344", "1152x864", "864x1152"],
+    requiresKey: true,
+    website: "https://platform.stability.ai/api-keys",
+  },
+  {
+    id: "replicate",
+    name: "Replicate FLUX",
+    kind: "image",
+    available: true,
+    description: "FLUX.1 by Black Forest Labs via Replicate. Stunning detail. API key required.",
+    models: ["black-forest-labs/flux-1.1-pro", "black-forest-labs/flux-schnell"],
+    sizes: ["1024x1024", "1024x768", "768x1024", "1024x576", "576x1024"],
+    requiresKey: true,
+    website: "https://replicate.com/account/api-tokens",
+  },
+];
+
 export function getLLMProvider(id: string): LLMProviderInfo | undefined {
   return LLM_PROVIDERS.find((p) => p.id === id);
 }
 
 export function getTTSProvider(id: string): TTSProviderInfo | undefined {
   return TTS_PROVIDERS.find((p) => p.id === id);
+}
+
+export function getImageProvider(id: string): ImageProviderInfo | undefined {
+  return IMAGE_PROVIDERS.find((p) => p.id === id);
 }
 
 export function getVoicesForProvider(providerId: string): VoiceInfo[] {

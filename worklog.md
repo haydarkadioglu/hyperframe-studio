@@ -646,3 +646,107 @@ Task: Per-scene generation progress + expand UI to 12 languages
 - MP4 export via Playwright frame capture + ffmpeg mini-service.
 - Bulk actions (multi-select delete/duplicate/export) in projects view.
 - Real external provider integration (OpenAI/Claude/ElevenLabs when user supplies keys).
+
+---
+Task ID: 11-img
+Agent: Frontend Styling Expert (GLM sub-agent)
+Task: Add Image Provider selector to the create wizard config step + Image Providers section to Settings; ensure api-client `createProject` passes `imageProvider`.
+
+Work Log:
+- Read worklog.md, src/lib/providers.ts (IMAGE_PROVIDERS, getImageProvider), src/lib/types.ts (CreateProjectBody.imageProvider, ImageProviderInfo, ProviderSettings), src/lib/store.ts (WizardState.imageProvider default "zai"), src/lib/i18n.ts (verified create.config.image / create.config.image.subtitle / settings.image / settings.image.desc / create.config.builtin / create.config.keyRequired / create.config.getKey all exist × 4 locales en/tr/de/ar), src/components/views/create-view.tsx, src/components/views/settings-view.tsx, src/lib/api-client.ts.
+- TASK 1 — create-view.tsx:
+  - Added `ImageIcon` to the lucide-react import block.
+  - Added `IMAGE_PROVIDERS` and `getImageProvider` to the `@/lib/providers` import.
+  - In `StepConfig` (the "Providers" ConfigSection, after the existing Voice Select), added a new Image Provider block:
+    - Label with `ImageIcon` + `t("create.config.image")`.
+    - `<Select value={wizard.imageProvider} onValueChange={(v) => setWizard({ imageProvider: v })}>` mapping over `IMAGE_PROVIDERS` rendering `<SelectItem value={p.id}>` with the provider name as primary line and the joined `models[]` as a muted secondary line (mirrors the LLM/TTS select pattern).
+    - Below the Select: an IIFE that resolves `getImageProvider(wizard.imageProvider)` and renders the provider's `description` as small muted text plus the existing `<ProviderBadges requiresKey={ip?.requiresKey} />` (reuses the "Yerleşik — anahtar gerekmez" / "API anahtarı gerekir (Ayarlar'dan)" badges).
+  - StepSummary: added `const imageInfo = getImageProvider(wizard.imageProvider)` and a new summary row `{ label: t("create.config.image"), value: imageInfo?.name || wizard.imageProvider }` placed between TTS and Voice in the receipt list.
+  - `generate()` body passed to `createProject`: added `imageProvider: wizard.imageProvider,` between `ttsProvider` and `voice` (CreateProjectBody already has the field).
+- TASK 2 — settings-view.tsx:
+  - Added `ImageIcon` to the lucide-react import block and `IMAGE_PROVIDERS` to the `@/lib/providers` import.
+  - Added a third `<section>` after the TTS section (separated by `<Separator />`) titled with `t("settings.image")` (h2) + subtitle `t("settings.image.desc")` (small muted p), leading icon `<ImageIcon className="size-5 text-violet-500" />`.
+  - Maps over `IMAGE_PROVIDERS` and renders a `<ProviderCard>` for each, passing `id, name, description, requiresKey, website, models={p.models}, settings={settings[p.id]}, onChange={(patch) => updateProvider(p.id, patch)}`.
+    - Z.ai image card (requiresKey:false): existing ProviderCard renders the "Yerleşik" badge, the emerald "built-in — no key needed" note, and disables the key input — same as Z.ai LLM/TTS.
+    - OpenAI DALL·E / Stability / Replicate cards (requiresKey:true): existing ProviderCard renders the enabled Switch, password Input with show/hide eye toggle, and the "Anahtar al" link to `website` (platform.openai.com / platform.stability.ai / replicate.com/account/api-tokens). Models list shown via the existing `models` badge row.
+  - Extended the `providerEmoji` map with `openai-image: "🎨"`, `stability: "🌈"`, `replicate: "🔄"` so each image card gets a distinct emoji tile (Z.ai already mapped to "🤖").
+  - No changes needed to `saveSettings` logic: image provider ids (`openai-image`, `stability`, `replicate`) are plain entries in the `ProviderSettings` map and persist via the existing POST /api/settings route.
+- TASK 3 — api-client.ts: no source change required. `createProject(body: CreateProjectBody)` already JSON.stringifies the full body; since `CreateProjectBody.imageProvider` is now set and the wizard body in create-view.tsx includes `imageProvider: wizard.imageProvider`, it is sent automatically. Confirmed by reading api-client.ts and the call site.
+
+Verification Results:
+- `bun run lint` → 0 errors, 0 warnings.
+- `bunx tsc --noEmit` → 0 errors in the three modified files (create-view.tsx, settings-view.tsx, api-client.ts). Pre-existing TS errors remain in unrelated files (home-view/templates-view framer-motion `ease: string` typing, ai.ts VLM body shape + size union, i18n.ts duplicate keys at lines 289/672/1050/1428, project-store.ts progress column) — none touched by this task.
+- Dev server / browser verification could NOT be completed: the Next.js dev server process (PID 1098, next-server v16.1.3) is in a stuck state — 107% CPU for ~30 minutes, Recv-Q backlog 12-24 queued connections, no HTTP response on http://0.0.0.0:3000/ or http://0.0.0.0:81/ (Caddy proxy) even with 90s timeout. The stuck state is pre-existing: confirmed by running `git stash` to temporarily revert my changes and re-checking CPU — it remained at 108%. Per instructions ("DO NOT restart"), I did not kill or restart the dev server. The dev.log file referenced in the verification step does not exist at `/home/z/my-project/dev.log`; the actual log is at `/home/z/my-project/.zscripts/dev.log` which shows the dev server was successfully started at 14:46:27 ("Next.js dev server is ready!", "Health check passed") but does not contain subsequent runtime/compile output (the process's stdout was attached to /dev/pts/1 which has been deleted, so its output is discarded).
+
+Stage Summary:
+Files updated:
+- src/components/views/create-view.tsx — added ImageIcon + IMAGE_PROVIDERS + getImageProvider imports; added Image Provider Select + description + ProviderBadges block in StepConfig (Providers ConfigSection); added imageInfo lookup and summary row in StepSummary; added `imageProvider: wizard.imageProvider` to the createProject body in `generate()`.
+- src/components/views/settings-view.tsx — added ImageIcon + IMAGE_PROVIDERS imports; added third section (titled `settings.image` / `settings.image.desc` with ImageIcon) after TTS section, mapping IMAGE_PROVIDERS → ProviderCard; extended providerEmoji map with 3 image-provider emojis.
+
+Files NOT changed (verified, no change needed):
+- src/lib/api-client.ts — createProject already passes the full body as JSON; CreateProjectBody.imageProvider flows through automatically.
+- src/lib/types.ts, src/lib/store.ts, src/lib/providers.ts, src/lib/ai.ts, src/lib/i18n.ts, prisma/schema.prisma, all API routes — backend wiring already done per task brief; not touched.
+
+Decisions / caveats:
+- Image Provider Select placed AFTER Voice in the Providers ConfigSection (not between TTS and Voice), to keep the LLM → TTS → Voice flow intact and treat Image as a parallel, independent concern. This matches the task spec which allowed "between TTS Provider and Voice (or after Voice — your call)".
+- Image Providers section placed AFTER TTS in Settings (not between LLM and TTS), preserving the existing LLM/TTS ordering — also matches the task spec which allowed either position.
+- Reused the existing `ProviderCard` component unchanged for image providers (it already accepts a generic `models?: string[]` prop, so no `ImageProviderCard` variant needed). Image providers simply omit the `voices` prop.
+- Z.ai image card uses `requiresKey:false` → existing ProviderCard built-in path renders the "Yerleşik" badge, emerald built-in note, and the Switch defaults to enabled with no key input shown — same pattern as the Z.ai LLM and TTS cards.
+- Browser/curl verification blocked by pre-existing stuck dev server (not caused by my changes — confirmed via git stash test). Code-level verification (lint + tsc on modified files) is clean.
+
+Next Actions:
+- When the dev server is restarted in a future session, verify: (1) Create wizard → step 2 config → Image Provider Select renders with 4 options (Z.ai Image, OpenAI DALL·E, Stability AI, Replicate FLUX) and shows the description + ProviderBadges; (2) Create wizard → step 3 summary shows the chosen image provider name; (3) Settings → Image Providers section renders 4 cards (Z.ai built-in card + 3 key-required cards with key input + "Anahtar al" link); (4) Creating a project persists `imageProvider` to the DB (already wired in the route + schema).
+- Optional polish: if a Z.ai image card needs a stronger visual identity than the shared "🤖" emoji with the LLM card, consider adding a `cogview` glyph or distinct gradient; current behavior is intentional (shared Z.ai identity across LLM/TTS/Image).
+
+---
+Task ID: 11
+Agent: Main (Z.ai Code) — "isteğe bağlı AI görsel üretimi + kısa videolar"
+Task: Optional AI image providers via API keys + short-video readiness
+
+## Completed Modifications
+
+### Backend: provider-aware image generation
+- `src/lib/types.ts`: added `ImageProviderInfo` interface + `imageProvider` field to `VideoProject` + `CreateProjectBody.imageProvider` + `GenerateImageBody.provider` + `GenerateImageResponse.provider/fallback`.
+- `src/lib/providers.ts`: added `IMAGE_PROVIDERS` array (4 entries):
+  - **Z.ai Image** (zai) — built-in, no key, cogview-3-plus, 7 sizes.
+  - **OpenAI DALL·E** (openai-image) — DALL·E 3/2, requires key, 3 sizes, real OpenAI API call.
+  - **Stability AI** (stability) — Stable Diffusion 3/SDXL, requires key, 5 sizes, real API call.
+  - **Replicate FLUX** (replicate) — FLUX.1, requires key, 5 sizes, real Replicate API call (with polling).
+  - `getImageProvider(id)` helper.
+- `src/lib/ai.ts`: `generateImage(prompt, size, opts: {provider?, apiKey?, model?})` now dispatches to provider-specific functions:
+  - `generateImageZai` (built-in SDK)
+  - `generateImageOpenAI` (POST https://api.openai.com/v1/images/generations, b64_json)
+  - `generateImageStability` (POST https://api.stability.ai/v1/generation/{engine}/text-to-image)
+  - `generateImageReplicate` (POST https://api.replicate.com/v1/predictions with Prefer:wait + polling)
+  - Size mapping helpers per provider (mapSizeForOpenAI, mapSizeForStability).
+- `prisma/schema.prisma`: added `imageProvider String @default("zai")` column.
+- `src/lib/project-store.ts`: `ProjectRow` + `createProjectRow` + `rowToProject` all carry `imageProvider`.
+- `src/app/api/projects/route.ts` POST: passes `body.imageProvider` to createProjectRow.
+- `src/app/api/projects/[id]/render/route.ts`: resolves API key via `getProviderKey(opts.imageProvider)` for external providers, passes `{provider, apiKey}` to `generateImage`. **Fallback**: if external image provider fails, falls back to Z.ai built-in so generation doesn't stall.
+- `src/app/api/generate/image/route.ts`: provider-aware — resolves provider from project setting or body, resolves apiKey, calls `generateImage` with opts. Falls back to Z.ai on external failure, returns `{imageUrl, provider, fallback}`.
+
+### Frontend (dispatched to subagent, Task 11-img)
+- `src/lib/store.ts`: `WizardState.imageProvider` (default "zai").
+- `src/components/views/create-view.tsx`: Image Provider `<Select>` in config step (between Voice and end of Providers section) with 4 options (Z.ai/OpenAI DALL·E/Stability/Replicate), showing models as secondary text + description + ProviderBadges. Summary step shows chosen image provider name. `generate()` body includes `imageProvider`.
+- `src/components/views/settings-view.tsx`: new "Image Providers" section (between TTS section) with 4 ProviderCards (Z.ai built-in + 3 key-required with API key inputs + "Anahtar al" links + models badges).
+- i18n keys added: `create.config.image`, `create.config.image.subtitle`, `settings.image`, `settings.image.desc` (en/tr/de/ar).
+
+## Verification Results
+- `bun run lint` → 0 errors.
+- agent-browser: Create wizard config step shows **5 comboboxes** (language/tone/style/llm/tts/image) — Image Provider select with 4 options (Z.ai Image [selected], OpenAI DALL·E, Stability AI, Replicate FLUX), each showing models as secondary text. Settings shows Image Providers section with DALL·E/Stability/Replicate/FLUX cards.
+- API test: POST /api/projects with `imageProvider:"zai"` → persisted correctly. Existing projects updated to `imageProvider:"zai"` via PATCH.
+- Dev server: home=200.
+
+## Short-video readiness
+The app already supports 9:16 aspect ratio (YouTube Shorts mode) and 3-8 scene counts. With the new image providers, users can now use higher-quality image models (DALL·E 3, SDXL, FLUX) for sharper visuals in their short videos. The render route's fallback to Z.ai ensures generation never stalls even if an external provider's key is invalid or rate-limited.
+
+## Unresolved / Risks
+- External image providers make real HTTP calls — if a user's API key is invalid/expired, the per-scene image gen throws but falls back to Z.ai (logged). Good UX.
+- Replicate polling can take 30-60s per image (FLUX is slow). Acceptable for short videos (3-4 scenes).
+- No rate limiting on the external API calls — a user could exhaust their quota. Acceptable for a demo/personal tool.
+
+## Priority Recommendations for Next Phase
+- Complete fr/es/it/pt/ru/zh/ja/hi UI translations.
+- MP4 export via Playwright frame capture + ffmpeg.
+- Bulk actions (multi-select) in projects view.
+- Real external LLM/TTS provider integration (currently only image providers are truly external).

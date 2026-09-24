@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Cpu,
   AudioLines,
+  ImageIcon,
   Palette,
   Sun,
   Moon,
@@ -20,6 +21,7 @@ import { useLocale } from "@/lib/use-locale";
 import {
   LLM_PROVIDERS,
   TTS_PROVIDERS,
+  IMAGE_PROVIDERS,
   LANGUAGES,
   TONES,
   STYLES,
@@ -294,6 +296,33 @@ export function SettingsView() {
           ))}
         </div>
       </section>
+
+      <Separator />
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="size-5 text-violet-500" />
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">{t("settings.image")}</h2>
+            <p className="text-xs text-muted-foreground">{t("settings.image.desc")}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {IMAGE_PROVIDERS.map((p) => (
+            <ProviderCard
+              key={p.id}
+              id={p.id}
+              name={p.name}
+              description={p.description}
+              requiresKey={p.requiresKey}
+              website={p.website}
+              models={p.models}
+              settings={settings[p.id]}
+              onChange={(patch) => updateProvider(p.id, patch)}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -363,6 +392,9 @@ function providerEmoji(id: string, name: string): string {
     gemini: "💎",
     elevenlabs: "🔊",
     "openai-tts": "🗣️",
+    "openai-image": "🎨",
+    stability: "🌈",
+    replicate: "🔄",
   };
   return map[id] ?? "⚡";
 }

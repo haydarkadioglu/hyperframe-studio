@@ -10,6 +10,7 @@ export interface ProjectRow {
   language: string;
   llmProvider: string;
   ttsProvider: string;
+  imageProvider: string;
   voice: string;
   tone: string;
   style: string;
@@ -35,6 +36,7 @@ export function rowToProject(row: any): ProjectRow {
     language: row.language,
     llmProvider: row.llmProvider,
     ttsProvider: row.ttsProvider,
+    imageProvider: row.imageProvider,
     voice: row.voice,
     tone: row.tone,
     style: row.style,
@@ -97,6 +99,7 @@ export async function createProjectRow(data: {
   language: string;
   llmProvider: string;
   ttsProvider: string;
+  imageProvider: string;
   voice: string;
   tone: string;
   style: string;
@@ -113,6 +116,7 @@ export async function createProjectRow(data: {
       language: data.language,
       llmProvider: data.llmProvider,
       ttsProvider: data.ttsProvider,
+      imageProvider: data.imageProvider,
       voice: data.voice,
       tone: data.tone,
       style: data.style,

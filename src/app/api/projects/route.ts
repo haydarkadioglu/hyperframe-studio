@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       language: body.language || "tr",
       llmProvider: body.llmProvider || "zai",
       ttsProvider: body.ttsProvider || "zai",
+      imageProvider: body.imageProvider || "zai",
       voice: body.voice || "tongtong",
       tone: body.tone || "professional",
       style: body.style || "modern",

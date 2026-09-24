@@ -39,6 +39,7 @@ export interface WizardState {
   language: string;
   llmProvider: string;
   ttsProvider: string;
+  imageProvider: string;
   voice: string;
   tone: Tone;
   style: VideoStyle;
@@ -56,6 +57,7 @@ const initialWizard: WizardState = {
   language: "tr",
   llmProvider: "zai",
   ttsProvider: "zai",
+  imageProvider: "zai",
   voice: "tongtong",
   tone: "professional",
   style: "modern",

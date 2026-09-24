@@ -10,6 +10,7 @@ import {
 import { buildSRT } from "@/lib/subtitles";
 import { saveAssetBuffer, toDataUrl } from "@/lib/storage";
 import { TONE_SPEED } from "@/lib/providers";
+import { getProviderKey } from "@/lib/settings-store";
 import type { Scene, VideoProject } from "@/lib/types";
 
 // Background jobs tracker (in-memory; fine for single dev instance)
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       customScript,
       voice: project.voice,
       aspectRatio: project.aspectRatio,
+      imageProvider: project.imageProvider || "zai",
     }).catch(async (err) => {
       console.error("Generation failed for", id, err);
       await updateProject(id, { status: "error", errorMessage: String(err?.message || err) });
@@ -75,6 +77,7 @@ async function runGeneration(
     customScript?: string;
     voice: string;
     aspectRatio: string;
+    imageProvider: string;
   }
 ) {
   await updateProject(projectId, {
@@ -133,6 +136,10 @@ async function runGeneration(
   let thumbUrl: string | undefined;
   const imageScenes = scenes.filter((s) => s.imagePrompt);
   let imagesDone = 0;
+  // Resolve API key for the chosen image provider (if external)
+  const imageApiKey = opts.imageProvider !== "zai"
+    ? await getProviderKey(opts.imageProvider)
+    : undefined;
   for (const scene of scenes) {
     if (scene.imagePrompt) {
       await updateProject(projectId, {
@@ -145,13 +152,28 @@ async function runGeneration(
         },
       });
       try {
-        const { buffer } = await generateImage(scene.imagePrompt, sizeForAspect);
+        const { buffer } = await generateImage(scene.imagePrompt, sizeForAspect, {
+          provider: opts.imageProvider,
+          apiKey: imageApiKey,
+        });
         const saved = await saveAssetBuffer(buffer, "png", "image");
         scene.imageUrl = saved.url;
         await addAsset({ projectId, type: "image", url: saved.url, role: "scene-visual", sceneIdx: scene.index });
         if (!thumbUrl) thumbUrl = saved.url;
       } catch (e) {
         console.error("Image gen failed for scene", scene.index, e);
+        // If external provider fails, fall back to Z.ai built-in so generation doesn't stall
+        if (opts.imageProvider !== "zai") {
+          try {
+            const { buffer } = await generateImage(scene.imagePrompt, sizeForAspect, { provider: "zai" });
+            const saved = await saveAssetBuffer(buffer, "png", "image");
+            scene.imageUrl = saved.url;
+            await addAsset({ projectId, type: "image", url: saved.url, role: "scene-visual", sceneIdx: scene.index });
+            if (!thumbUrl) thumbUrl = saved.url;
+          } catch (e2) {
+            console.error("Fallback Z.ai image gen also failed for scene", scene.index, e2);
+          }
+        }
       }
       imagesDone++;
       // Persist updated scenes after each image so UI reflects progress incrementally

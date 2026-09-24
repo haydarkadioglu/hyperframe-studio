@@ -22,6 +22,7 @@ import {
   RectangleHorizontal,
   Cpu,
   Mic,
+  ImageIcon,
   Receipt,
   Lightbulb,
   ChevronDown,
@@ -36,6 +37,8 @@ import {
   STYLES,
   LLM_PROVIDERS,
   TTS_PROVIDERS,
+  IMAGE_PROVIDERS,
+  getImageProvider,
   getVoicesForProvider,
   recommendVoice,
 } from "@/lib/providers";
@@ -1281,6 +1284,47 @@ function StepConfig() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Image */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <ImageIcon className="size-3.5 text-muted-foreground" />
+            {t("create.config.image")}
+          </Label>
+          <Select
+            value={wizard.imageProvider}
+            onValueChange={(v) => setWizard({ imageProvider: v })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {IMAGE_PROVIDERS.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <span className="flex flex-col">
+                    <span>{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {p.models.join(", ")}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(() => {
+            const ip = getImageProvider(wizard.imageProvider);
+            return (
+              <div className="space-y-1.5">
+                {ip?.description && (
+                  <p className="text-xs text-muted-foreground leading-tight">
+                    {ip.description}
+                  </p>
+                )}
+                <ProviderBadges requiresKey={ip?.requiresKey} />
+              </div>
+            );
+          })()}
+        </div>
       </ConfigSection>
     </div>
   );
@@ -1357,6 +1401,7 @@ function StepSummary() {
         language: wizard.language,
         llmProvider: wizard.llmProvider,
         ttsProvider: wizard.ttsProvider,
+        imageProvider: wizard.imageProvider,
         voice: wizard.voice,
         tone: wizard.tone,
         style: wizard.style,
@@ -1392,6 +1437,7 @@ function StepSummary() {
   const styleInfo = STYLES.find((s) => s.id === wizard.style);
   const llmInfo = LLM_PROVIDERS.find((p) => p.id === wizard.llmProvider);
   const ttsInfo = TTS_PROVIDERS.find((p) => p.id === wizard.ttsProvider);
+  const imageInfo = getImageProvider(wizard.imageProvider);
   const voiceInfo = getVoicesForProvider(wizard.ttsProvider).find((v) => v.id === wizard.voice);
 
   const summary: { label: string; value: string }[] = [
@@ -1430,6 +1476,10 @@ function StepSummary() {
     {
       label: "TTS",
       value: ttsInfo?.name || wizard.ttsProvider,
+    },
+    {
+      label: t("create.config.image"),
+      value: imageInfo?.name || wizard.imageProvider,
     },
     {
       label: t("create.config.voice"),
