@@ -61,12 +61,14 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        suppressHydrationWarning
       >
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
           disableTransitionOnChange
+          suppressHydrationWarning
         >
           <div className="min-h-screen flex flex-col bg-background text-foreground">
             {children}
