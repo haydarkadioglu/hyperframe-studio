@@ -1,78 +1,78 @@
 # Hyperframe Studio
 
-AI ile video üreten web uygulaması. Konu yaz, ürün fotoğrafı yükle veya senaryo gir — AI senaryoyu, görselleri, seslendirmeyi ve altyazıları otomatik üretsin.
+AI-powered video creator web app. Write a topic, upload a product photo, or paste a script — AI automatically generates the script, images, narration, and subtitles.
 
 ![Hyperframe Studio](public/logo.svg)
 
 ---
 
-## Neler yapabilir?
+## What can it do?
 
-- **4 mod**: Konu → Video, Ürün Tanıtımı (fotoğraf yükle), Kendi Senaryon, YouTube Altyazılı
-- **Animasyonlu oynatıcı**: Her sahne hareketli (ken-burns, gradient, ışık efektleri)
-- **AI sağlayıcıları**: Z.ai (yerleşik, anahtarsız), OpenAI DALL·E, Stability AI, Replicate FLUX
-- **12 dil**: Türkçe, İngilizce, Almanca, Arapça (RTL), Fransızca, İspanyolca, İtalyanca, Portekizce, Rusça, Çince, Japonca, Hintçe
-- **8 ton**: Profesyonel, enerjik, sakin, dramatik, samimi, ilham verici, haber, belgesel
-- **Sahne editörü**: Ürettikten sonra her sahneyi düzenle
-- **İndir**: SRT, VTT, ses dosyası
-- **Tema**: Koyu/aydınlık + 6 renk teması
+- **4 modes**: Topic → Video, Product Showcase (upload photos), Your Own Script, YouTube Subtitled
+- **Animated player**: every scene is motion (ken-burns, gradient, light effects)
+- **AI providers**: Z.ai (built-in, no key needed), OpenAI DALL·E, Stability AI, Replicate FLUX
+- **12 languages**: Turkish, English, German, Arabic (RTL), French, Spanish, Italian, Portuguese, Russian, Chinese, Japanese, Hindi
+- **8 tones**: Professional, energetic, calm, dramatic, friendly, inspirational, news, documentary
+- **Scene editor**: edit every scene after generation
+- **Downloads**: SRT, VTT, audio file
+- **Theming**: dark/light + 6 accent colors
 
 ---
 
-## Kurulum
+## Setup
 
-### Gereksinimler
+### Requirements
 
-- [Node.js](https://nodejs.org) 18+ yüklü olmalı (indirip kurun)
-- İnternet bağlantısı (AI modelleri çevrimiçi çalışır)
+- [Node.js](https://nodejs.org) 18+ installed
+- Internet connection (AI models run online)
 
-### Adım adım kurulum
+### Step-by-step install
 
-**1. İndir**
+**1. Download**
 
-Terminal/komut satırı aç ve şunu yapıştır:
+Open your terminal and paste:
 
 ```bash
 git clone https://github.com/haydarkadioglu/hyperframe-studio.git
 cd hyperframe-studio
 ```
 
-> Git yüklü değilse: [git-scm.com/downloads](https://git-scm.com/downloads) adresinden indir.
+> Don't have Git? Install it from [git-scm.com/downloads](https://git-scm.com/downloads).
 
-**2. Paketleri kur**
+**2. Install packages**
 
 ```bash
 npm install --legacy-peer-deps
 ```
 
-Birkaç dakika sürebilir. `--legacy-peer-deps` önemli, yazmayı unutma.
+Takes a few minutes. The `--legacy-peer-deps` flag is important — don't forget it.
 
-**3. Veritabanını oluştur**
+**3. Create the database**
 
 ```bash
 cp .env.example .env
 npx prisma db push --accept-data-loss
 ```
 
-Bu, `db/custom.db` adında bir veritabanı dosyası oluşturur.
+This creates a `db/custom.db` database file.
 
-**4. Çalıştır**
+**4. Run**
 
 ```bash
 npm run dev
 ```
 
-**5. Tarayıcıda aç**
+**5. Open in browser**
 
-Şu adrese git: **http://localhost:3000**
+Go to: **http://localhost:3000**
 
-Bitti! 🎉 Artık "New Video" butonuna basıp video üretmeye başlayabilirsin.
+Done! 🎉 Now hit "New Video" and start creating.
 
 ---
 
-### Docker ile kurulum (alternatif)
+### Docker setup (alternative)
 
-Node.js kurmakla uğraşmak istemiyorsan [Docker](https://docs.docker.com/get-docker/) kullan:
+Don't want to install Node.js? Use [Docker](https://docs.docker.com/get-docker/):
 
 ```bash
 git clone https://github.com/haydarkadioglu/hyperframe-studio.git
@@ -80,80 +80,80 @@ cd hyperframe-studio
 docker compose up --build
 ```
 
-Sonra **http://localhost:3000** adresine git.
+Then go to **http://localhost:3000**.
 
-Durdurmak için: `docker compose down`
-
----
-
-## Nasıl kullanılır?
-
-1. **New Video** butonuna bas
-2. Mod seç (Konu / Ürün / Senaryo / YouTube)
-3. İçeriğini gir (konu yaz, fotoğraf yükle veya senaryo yapıştır)
-4. Dil, ton, stil, sağlayıcı seç
-5. **Generate Video**'ya bas — birkaç dakika bekle (ilerleme çubuğunu göreceksin)
-6. Tamamlanınca video oynatıcıda izle, sahneleri düzenle, SRT/ses indir
+To stop: `docker compose down`
 
 ---
 
-## AI sağlayıcıları (isteğe bağlı)
+## How to use
 
-Z.ai yerleşik olarak gelir, anahtar gerekmez. Daha kaliteli görseller için kendi API anahtarını kullanabilirsin:
+1. Click **New Video**
+2. Pick a mode (Topic / Product / Script / YouTube)
+3. Enter your content (write a topic, upload photos, or paste a script)
+4. Choose language, tone, style, providers
+5. Click **Generate Video** — wait a few minutes (you'll see a progress bar)
+6. When done, watch in the player, edit scenes, download SRT/audio
 
-1. **Settings** sayfasına git
-2. İstediğin sağlayıcının kartını bul (OpenAI, Stability, Replicate)
-3. API anahtarını gir ve **Save**'e bas
-4. Video üretirken "Image Provider" olarak onu seç
+---
 
-Anahtar nereden alınır:
+## AI providers (optional)
+
+Z.ai is built-in and needs no key. For higher-quality images, you can use your own API key:
+
+1. Go to the **Settings** page
+2. Find the provider card you want (OpenAI, Stability, Replicate)
+3. Enter your API key and click **Save**
+4. When generating a video, pick it as the "Image Provider"
+
+Where to get keys:
 - OpenAI: https://platform.openai.com/api-keys
 - Stability: https://platform.stability.ai/api-keys
 - Replicate: https://replicate.com/account/api-tokens
 
-Anahtar yoksa veya yanlışsa sorun değil — otomatik Z.ai'e düşer, video yine üretilir.
+No key or invalid key? No problem — it automatically falls back to Z.ai, the video still generates.
 
 ---
 
-## Komutlar
+## Commands
 
-| Komut | Ne yapar |
+| Command | What it does |
 |---|---|
-| `npm run dev` | Geliştirme sunucusunu başlat (port 3000) |
-| `npm run build` | Production derlemesi yap |
-| `npm start` | Production sunucusunu başlat |
-| `npm run lint` | Kod kalitesini kontrol et |
-| `npx prisma db push` | Veritabanı şemasını güncelle |
-| `npx prisma generate` | Prisma client'ı yenile |
+| `npm run dev` | Start dev server (port 3000) |
+| `npm run build` | Production build |
+| `npm start` | Start production server |
+| `npm run lint` | Check code quality |
+| `npx prisma db push` | Update database schema |
+| `npx prisma generate` | Regenerate Prisma client |
 
 ---
 
-## Sorun mu var?
+## Troubleshooting
 
-**Sunucu başlamıyor / port 3000 dolu**
-Başka bir şey 3000 portunu kullanıyor olabilir. Kapat veya `docker-compose.yml`'den portu değiştir.
+**Server won't start / port 3000 in use**
+Something else is using port 3000. Close it or change the port in `docker-compose.yml`.
 
-**Video üretimi takılı kaldı**
-Sayfayı yenile. Hâlâ takılıysa, proje kartında "Tekrar dene" butonuna bas.
+**Generation stuck**
+Refresh the page. If still stuck, click "Try again" on the project card.
 
-**"Unknown argument" Prisma hatası**
+**"Unknown argument" Prisma error**
 ```bash
 npx prisma generate
 ```
-sonra sunucuyu yeniden başlat.
+then restart the server.
 
-**Ses çıkmıyor**
-Oynat düğmesine bir kez tıkla (tarayıcı otomatik oynatmayı engelliyor).
+**No audio**
+Click the play button once (browsers block autoplay).
 
-**Görsel üretimi yavaş**
-Sahne başına 30-50 saniye normal. İlerleme çubuğundan takip edebilirsin.
+**Image generation is slow**
+30–50 seconds per scene is normal. Watch the progress bar.
 
 ---
 
-## Lisans
+## License
 
-Kişisel kullanım için. Olduğu gibi sunulur.
+For personal use. Provided as-is.
 
-## Teşekkürler
+## Credits
 
-[Next.js](https://nextjs.org), [Tailwind CSS](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com), [Prisma](https://www.prisma.io), ve [z-ai-web-dev-sdk](https://www.npmjs.com/package/z-ai-web-dev-sdk) ile yapıldı.
+Built with [Next.js](https://nextjs.org), [Tailwind CSS](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com), [Prisma](https://www.prisma.io), and [z-ai-web-dev-sdk](https://www.npmjs.com/package/z-ai-web-dev-sdk).
